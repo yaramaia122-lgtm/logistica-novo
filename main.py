@@ -29,7 +29,7 @@ if not st.session_state['logado']:
     with col_log:
         st.markdown("<br><br>", unsafe_allow_html=True)
         
-        # SOLUÇÃO DEFINITIVA: Puxa a logo direto do link público do GitHub de forma segura
+        # Leitura segura da logo direto do repositório principal ativo
         try:
             url_logo = "https://raw.githubusercontent.com/yaramaia122-lgtm/logistica-aura/main/logo.png"
             img_data = requests.get(url_logo)
@@ -47,16 +47,18 @@ if not st.session_state['logado']:
             if st.form_submit_button("ACESSAR SISTEMA"):
                 try:
                     tk = st.secrets["GITHUB_TOKEN"]
-                    rp = Github(auth=Auth.Token(tk)).get_repo(st.secrets["GITHUB_REPO"])
+                    repo_nome = st.secrets.get("GITHUB_REPO", "yaramaia122-lgtm/logistica-novo")
+                    rp = Github(auth=Auth.Token(tk)).get_repo(repo_nome)
                     f = rp.get_contents("usuarios.csv")
                     df_u = pd.read_csv(io.StringIO(f.decoded_content.decode()))
+                    
                     if not df_u[(df_u['Usuario'] == u) & (df_u['Senha'] == p)].empty:
                         st.session_state['logado'] = True
                         st.session_state['user'] = u
                         st.switch_page("pages/1_📅_Agenda.py")
                     else:
-                        st.error("Dados incorretos.")
+                        st.error("Usuário ou Senha incorretos.")
                 except Exception as e:
-                    st.error("Erro ao carregar banco de usuários.")
+                    st.error("Erro de sincronização. Verifique os Secrets do Streamlit.")
 else:
     st.switch_page("pages/1_📅_Agenda.py")
