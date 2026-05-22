@@ -11,9 +11,7 @@ st.markdown("""
     div[data-testid="stForm"] { background-color: #002D5E !important; border: none !important; }
     label { color: #FFFFFF !important; font-weight: 700; }
     div[data-testid="stForm"] .stTextInput input {
-        background-color: #FFFFFF !important;
-        color: #002D5E !important;
-        border-radius: 8px !important;
+        background-color: #FFFFFF !important; color: #002D5E !important; border-radius: 8px !important;
     }
     .stButton>button {
         background-color: #FFFFFF !important; color: #002D5E !important;
@@ -37,7 +35,6 @@ if not st.session_state['logado']:
             if st.form_submit_button("ACESSAR SISTEMA"):
                 try:
                     tk = st.secrets["GITHUB_TOKEN"]
-                    # ATENÇÃO: Certifique-se de que o nome do repositório abaixo está correto
                     rp = Github(auth=Auth.Token(tk)).get_repo(st.secrets["GITHUB_REPO"])
                     f = rp.get_contents("usuarios.csv")
                     df_u = pd.read_csv(io.StringIO(f.decoded_content.decode()))
@@ -48,6 +45,6 @@ if not st.session_state['logado']:
                     else:
                         st.error("Dados incorretos.")
                 except Exception as e:
-                    st.error("Erro ao conectar ao banco de usuários.")
+                    st.error("Erro ao carregar banco de usuários.")
 else:
     st.switch_page("pages/1_📅_Agenda.py")
