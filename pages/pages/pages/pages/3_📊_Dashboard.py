@@ -16,12 +16,13 @@ df_v = pd.read_csv(io.StringIO(f_v.decoded_content.decode()))
 df_v["Total"] = pd.to_numeric(df_v["Total"], errors="coerce").fillna(0)
 df_at = df_v[df_v["Status"] != "Cancelada"]
 
-m1, m2, m3 = st.columns(3)
-m1.metric("Quantidade de Viagens Agendadas", len(df_at))
-m2.metric("Volume de Passageiros", df_at["Passageiro"].nunique())
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Viagens Agendadas", len(df_at))
+m2.metric("Quantidade de Passageiros", df_at["Passageiro"].nunique())
 m3.metric("Valores Totais Ativos", f"R$ {df_at['Total'].sum():,.2f}")
+m4.metric("Motoristas Alocados", df_at["Motorista"].nunique())
 
 st.markdown("---")
-st.write("### Custos por Centro de Custo")
+st.write("### Custos Estruturados por Centro de Custo")
 if not df_at.empty:
     st.bar_chart(df_at.groupby("Centro_Custo")["Total"].sum())
