@@ -1,2 +1,2 @@
-Usuario,Senha,Perfil
-admin,aura123,Administrador
+Usuario,Senha,Perfil,Trocar_Senha,Status
+admin,aura123,Administrador,Não,Ativo
