@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from github import Github, Auth
 import io
+import requests
 
 st.set_page_config(page_title="AURA APOENA LOGISTICS", layout="wide", initial_sidebar_state="collapsed")
 
@@ -20,15 +21,26 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-if 'logado' not in st.session_state:
+if 'logado' not in st.session_state: 
     st.session_state['logado'] = False
 
 if not st.session_state['logado']:
     _, col_log, _ = st.columns([1, 1.2, 1])
     with col_log:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        st.image("logo.png", width=280)
-        st.markdown("<h2 style='color:white; text-align:center;'>LOGISTICAS</h2>", unsafe_allow_html=True)
+        
+        # SOLUÇÃO DEFINITIVA: Puxa a logo direto do link público do GitHub de forma segura
+        try:
+            url_logo = "https://raw.githubusercontent.com/yaramaia122-lgtm/logistica-aura/main/logo.png"
+            img_data = requests.get(url_logo)
+            if img_data.status_code == 200:
+                st.image(img_data.content, width=280)
+            else:
+                st.markdown("<h1 style='color:white; text-align:center;'>AURA APOENA</h1>", unsafe_allow_html=True)
+        except:
+            st.markdown("<h1 style='color:white; text-align:center;'>AURA APOENA</h1>", unsafe_allow_html=True)
+            
+        st.markdown("<h2 style='color:white; text-align:center; letter-spacing:3px;'>LOGISTICAS</h2>", unsafe_allow_html=True)
         with st.form("login"):
             u = st.text_input("Usuário").strip()
             p = st.text_input("Senha", type="password")
