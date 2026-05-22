@@ -31,16 +31,25 @@ df_v = pd.read_csv(io.StringIO(f_v.decoded_content.decode()))
 f_o = rp.get_contents("observacoes.csv")
 df_o = pd.read_csv(io.StringIO(f_o.decoded_content.decode()))
 
-st.markdown('<div class="agenda-header">OBSERVAÇÕES DA SEMANA (Clique para editar)</div>', unsafe_allow_html=True)
+# Observações Semanais Editáveis
+st.markdown('<div class="agenda-header">OBSERVAÇÕES</div>', unsafe_allow_html=True)
 obs_edit = st.data_editor(df_o, use_container_width=True, hide_index=True)
-if st.button("💾 Salvar Alterações de Observações"):
-    rp.update_file("observacoes.csv", "Update via Agenda", obs_edit.to_csv(index=False), f_o.sha)
-    st.success("Observações salvas!"); st.rerun()
+if st.button("💾 Salvar Observações"):
+    rp.update_file("observacoes.csv", "Update", obs_edit.to_csv(index=False), f_o.sha)
+    st.success("Salvo!"); st.rerun()
 
-st.markdown('<br><div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
+# Trecho 1: Pontes e Lacerda x Cuiabá
+st.markdown('<br><div class="trecho-header">Pontes e Lacerda x Cuiabá</div>', unsafe_allow_html=True)
 df_pl = df_v[df_v['Trajeto'] == "Pontes e Lacerda x Cuiabá"]
-st.dataframe(df_pl[["Passageiro", "Data", "Hora_Saida", "Voo", "Voo_Hora", "Hotel", "Motorista"]], use_container_width=True, hide_index=True)
+cols_pl = ["Passageiro", "semana", "data", "horário", "saída", "Cia/nº voo", "Horário do Voo", "Data do Voo", "Hotel em Cuiabá", "Motorista"]
+for c in cols_pl:
+    if c not in df_pl.columns: df_pl[c] = ""
+st.dataframe(df_pl[cols_pl], use_container_width=True, hide_index=True)
 
-st.markdown('<br><div class="trecho-header">CUIABÁ X PONTES E LACERDA</div>', unsafe_allow_html=True)
+# Trecho 2: Cuiabá x Pontes e Lacerda
+st.markdown('<br><div class="trecho-header">Cuiabá x Pontes e Lacerda</div>', unsafe_allow_html=True)
 df_cp = df_v[df_v['Trajeto'] == "Cuiabá x Pontes e Lacerda"]
-st.dataframe(df_cp[["Passageiro", "Data", "Hora_Saida", "Voo", "Voo_Hora", "Hotel", "Hospedagem", "Motorista"]], use_container_width=True, hide_index=True)
+cols_cp = ["Passageiro", "semana", "data", "horário", "Cia/nº voo", "Hotel Cuiabá", "semana_ret", "data_ret", "horário_ret", "Motorista", "Hospedagem . Lacerda"]
+for c in cols_cp:
+    if c not in df_cp.columns: df_cp[c] = ""
+st.dataframe(df_cp[cols_cp], use_container_width=True, hide_index=True)
