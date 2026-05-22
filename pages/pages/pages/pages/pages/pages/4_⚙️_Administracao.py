@@ -17,18 +17,18 @@ df_v = pd.read_csv(io.StringIO(f_v.decoded_content.decode()))
 f_u = rp.get_contents("usuarios.csv")
 df_u = pd.read_csv(io.StringIO(f_u.decoded_content.decode()))
 
-tab1, tab2 = st.tabs(["💰 Histórico Completo de Custos", "👤 Gestão Avançada de Usuários"])
+tab1, tab2 = st.tabs(["💰 Registro e Edição de Custos", "👤 Controle e Reset de Usuários"])
 
 with tab1:
-    st.write("Abaixo você gerencia todos os custos vinculados aos Centros de Custo:")
+    st.write("Edite os lançamentos financeiros diretamente na tabela:")
     ed_f = st.data_editor(df_v, use_container_width=True, hide_index=True)
-    if st.button("Salvar Custos"):
+    if st.button("Salvar Modificações de Custos"):
         rp.update_file("dados_logistica.csv", "Edit Fin", ed_f.to_csv(index=False), f_v.sha)
-        st.success("Planilha financeira atualizada!"); st.rerun()
+        st.success("Base de custos atualizada!"); st.rerun()
 
 with tab2:
-    st.write("Controle corporativo de acessos (Criação, Reset e Redefinição de Senhas)")
+    st.write("Criação de acessos corporativos e gerenciamento de senhas padronizadas:")
     ed_u = st.data_editor(df_u, num_rows="dynamic", use_container_width=True)
-    if st.button("Salvar Usuários e Permissões"):
+    if st.button("Confirmar Alterações de Usuários"):
         rp.update_file("usuarios.csv", "Edit Users", ed_u.to_csv(index=False), f_u.sha)
-        st.success("Base de dados de usuários salva!"); st.rerun()
+        st.success("Tabela de acessos sincronizada!"); st.rerun()
