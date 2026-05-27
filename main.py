@@ -21,7 +21,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Limpeza inicial de estados travados
 if 'logado' not in st.session_state: 
     st.session_state['logado'] = False
 
@@ -58,12 +57,12 @@ if not st.session_state['logado']:
                     else:
                         st.error("Usuário ou Senha incorretos.")
                 except Exception as e:
-                    st.clear_cache()  # Limpa o cache se falhar
                     st.error("Erro de sincronização. Clique no botão de limpar cache abaixo e tente de novo.")
         
         st.markdown("<br>", unsafe_allow_html=True)
+        # CORREÇÃO CRÍTICA: Comando de limpeza oficial do Streamlit
         if st.button("🔄 LIMPAR MEMÓRIA CACHE DO SISTEMA"):
-            st.clear_cache()
-            st.success("Memória limpa! Tente fazer o login novamente.")
+            st.cache_data.clear()
+            st.success("Memória limpa com sucesso! Tente fazer o login novamente.")
 else:
     st.switch_page("pages/1_📅_Agenda.py")
