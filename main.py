@@ -21,6 +21,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Limpeza inicial de estados travados
 if 'logado' not in st.session_state: 
     st.session_state['logado'] = False
 
@@ -29,18 +30,15 @@ if not st.session_state['logado']:
     with col_log:
         st.markdown("<br><br>", unsafe_allow_html=True)
         
-        # Leitura segura da logo direto do repositório principal ativo
         try:
             url_logo = "https://raw.githubusercontent.com/yaramaia122-lgtm/logistica-aura/main/logo.png"
-            img_data = requests.get(url_logo)
-            if img_data.status_code == 200:
-                st.image(img_data.content, width=280)
-            else:
-                st.markdown("<h1 style='color:white; text-align:center;'>AURA APOENA</h1>", unsafe_allow_html=True)
+            img_data = requests.get(url_logo).content
+            st.image(img_data, width=280)
         except:
             st.markdown("<h1 style='color:white; text-align:center;'>AURA APOENA</h1>", unsafe_allow_html=True)
             
         st.markdown("<h2 style='color:white; text-align:center; letter-spacing:3px;'>LOGISTICAS</h2>", unsafe_allow_html=True)
+        
         with st.form("login"):
             u = st.text_input("Usuário").strip()
             p = st.text_input("Senha", type="password")
@@ -52,13 +50,20 @@ if not st.session_state['logado']:
                     f = rp.get_contents("usuarios.csv")
                     df_u = pd.read_csv(io.StringIO(f.decoded_content.decode()))
                     
-                    if not df_u[(df_u['Usuario'] == u) & (df_u['Senha'] == p)].empty:
+                    user_match = df_u[(df_u['Usuario'] == u) & (df_u['Senha'] == p)]
+                    if not user_match.empty:
                         st.session_state['logado'] = True
                         st.session_state['user'] = u
                         st.switch_page("pages/1_📅_Agenda.py")
                     else:
                         st.error("Usuário ou Senha incorretos.")
                 except Exception as e:
-                    st.error("Erro de sincronização. Verifique os Secrets do Streamlit.")
+                    st.clear_cache()  # Limpa o cache se falhar
+                    st.error("Erro de sincronização. Clique no botão de limpar cache abaixo e tente de novo.")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🔄 LIMPAR MEMÓRIA CACHE DO SISTEMA"):
+            st.clear_cache()
+            st.success("Memória limpa! Tente fazer o login novamente.")
 else:
     st.switch_page("pages/1_📅_Agenda.py")
