@@ -21,6 +21,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# 👤 USUÁRIOS REGISTRADOS DIRETO NO APP (Não precisa mais de arquivo no GitHub!)
+USUARIOS_REGISTRADOS = {
+    "admin": "aura123",
+    "yara": "aura2026"
+}
+
 if 'logado' not in st.session_state: 
     st.session_state['logado'] = False
 
@@ -31,8 +37,7 @@ if not st.session_state['logado']:
         
         try:
             url_logo = "https://raw.githubusercontent.com/yaramaia122-lgtm/logistica-aura/main/logo.png"
-            img_data = requests.get(url_logo).content
-            st.image(img_data, width=280)
+            st.image(requests.get(url_logo).content, width=280)
         except:
             st.markdown("<h1 style='color:white; text-align:center;'>AURA APOENA</h1>", unsafe_allow_html=True)
             
@@ -42,27 +47,17 @@ if not st.session_state['logado']:
             u = st.text_input("Usuário").strip()
             p = st.text_input("Senha", type="password")
             if st.form_submit_button("ACESSAR SISTEMA"):
-                try:
-                    tk = st.secrets["GITHUB_TOKEN"]
-                    repo_nome = st.secrets.get("GITHUB_REPO", "yaramaia122-lgtm/logistica-novo")
-                    rp = Github(auth=Auth.Token(tk)).get_repo(repo_nome)
-                    f = rp.get_contents("usuarios.csv")
-                    df_u = pd.read_csv(io.StringIO(f.decoded_content.decode()))
-                    
-                    user_match = df_u[(df_u['Usuario'] == u) & (df_u['Senha'] == p)]
-                    if not user_match.empty:
-                        st.session_state['logado'] = True
-                        st.session_state['user'] = u
-                        st.switch_page("pages/1_📅_Agenda.py")
-                    else:
-                        st.error("Usuário ou Senha incorretos.")
-                except Exception as e:
-                    st.error("Erro de sincronização. Clique no botão de limpar cache abaixo e tente de novo.")
+                # Validação direta e instantânea na memória do App
+                if u in USUARIOS_REGISTRADOS and USUARIOS_REGISTRADOS[u] == p:
+                    st.session_state['logado'] = True
+                    st.session_state['user'] = u
+                    st.switch_page("pages/1_📅_Agenda.py")
+                else:
+                    st.error("Usuário ou Senha incorretos.")
         
         st.markdown("<br>", unsafe_allow_html=True)
-        # CORREÇÃO CRÍTICA: Comando de limpeza oficial do Streamlit
-        if st.button("🔄 LIMPAR MEMÓRIA CACHE DO SISTEMA"):
+        if st.button("🔄 LIMPAR MEMÓRIA CACHE"):
             st.cache_data.clear()
-            st.success("Memória limpa com sucesso! Tente fazer o login novamente.")
+            st.success("Memória limpa!")
 else:
     st.switch_page("pages/1_📅_Agenda.py")
