@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit st
 import pandas as pd
 from github import Github, Auth
 import io
@@ -6,6 +6,13 @@ import io
 if 'logado' not in st.session_state or not st.session_state['logado']: st.stop()
 
 st.set_page_config(page_title="Programar - AURA", layout="wide")
+
+with st.sidebar:
+    st.markdown("---")
+    if st.button("Sair do Sistema", use_container_width=True):
+        st.session_state['logado'] = False
+        st.session_state['user'] = None
+        st.rerun()
 
 CC_LISTA = [
     "210301 - Moagem", "210403 - Detox", "210801 - Laboratório", "211002 - Manutenção Mecânica Planta",
@@ -32,15 +39,19 @@ with st.form("programar_viagem"):
     c1, c2 = st.columns(2)
     px = c1.text_input("Passageiro").upper()
     mt = c1.selectbox("Motorista", ["Ilson", "Antonio", "Vagno", "Cido", "A definir", "Outro"])
-    tj = c1.selectbox("Trecho", ["Pontes e Lacerda x Cuiabá", "Cuiabá x Pontes e Lacerda"])
+    
+    # ADICIONADO A OPÇÃO FLEXÍVEL DE SELEÇÃO DE TRAJETO
+    tj_selecao = c1.selectbox("Trecho", ["Pontes e Lacerda x Cuiabá", "Cuiabá x Pontes e Lacerda", "Outras Cidades (Especificar abaixo)"])
+    tj_custom = c1.text_input("Se selecionou 'Outras Cidades', especifique o trajeto (Ex: Lacerda x Vila Bela):").strip()
+    
     cc = c1.selectbox("Centro de Custo", CC_LISTA)
     
     dt = c2.date_input("Data")
     sem = c2.selectbox("Dia da Semana", ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"])
     hs = c2.text_input("Hora Saída")
-    ht = c2.text_input("Hotel/Destino")
-    vn = c1.text_input("Cia/nº voo")
-    vh = c2.text_input("Horário do Voo")
+    ht = c2.text_input("Hotel/Destino Final")
+    vn = c1.text_input("Cia/nº voo (Se houver)")
+    vh = c2.text_input("Horário do Voo (Se houver)")
     
     st.markdown("### Custos (Acesso Restrito)")
     f1, f2, f3, f4 = st.columns(4)
@@ -50,9 +61,12 @@ with st.form("programar_viagem"):
     c_o = f4.number_input("Outros Custos", 0.0)
     
     if st.form_submit_button("CONFIRMAR E ENVIAR PARA AGENDA"):
+        # Validação do trecho customizado
+        trajeto_final = tj_custom if tj_selecao == "Outras Cidades (Especificar abaixo)" and tj_custom != "" else tj_selecao
+        
         total = c_h + c_c + c_a + c_o
         nova = pd.DataFrame([{
-            "Passageiro": px, "Motorista": mt, "Trajeto": tj, "Centro_Custo": cc,
+            "Passageiro": px, "Motorista": mt, "Trajeto": trajeto_final, "Centro_Custo": cc,
             "semana": sem, "data": dt.strftime('%d/%m'), "horário": hs, "saída": ht,
             "Cia/nº voo": vn, "Horário do Voo": vh, "Data do Voo": dt.strftime('%d/%m'),
             "Hotel em Cuiabá": ht, "Hotel Cuiabá": ht, "semana_ret": sem, "data_ret": dt.strftime('%d/%m'),
