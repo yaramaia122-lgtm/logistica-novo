@@ -7,11 +7,17 @@ if 'logado' not in st.session_state or not st.session_state['logado']: st.stop()
 
 st.set_page_config(page_title="Administração - AURA", layout="wide")
 
+with st.sidebar:
+    st.markdown("---")
+    if st.button("Sair do Sistema", use_container_width=True):
+        st.session_state['logado'] = False
+        st.session_state['user'] = None
+        st.rerun()
+
 tk = st.secrets["GITHUB_TOKEN"]
 rp = Github(auth=Auth.Token(tk)).get_repo(st.secrets["GITHUB_REPO"])
-
-f_v = rp.get_contents("dados_logistica.csv")
-df_v = pd.read_csv(io.StringIO(f_v.decoded_content.decode()))
+df_v = rp.get_contents("dados_logistica.csv")
+df_v = pd.read_csv(io.StringIO(df_v.decoded_content.decode()))
 
 tab1, tab2 = st.tabs(["Registro Completo de Custos", "Configurações de Sistema"])
 
@@ -20,7 +26,7 @@ with tab1:
     ed_f = st.data_editor(df_v, use_container_width=True, hide_index=True)
     if st.button("Salvar Modificações de Custos"):
         rp.update_file("dados_logistica.csv", "Edit Fin", ed_f.to_csv(index=False), f_v.sha)
-        st.success("Histórico financeiro atualizado com sucesso."); st.rerun()
+        st.success("Histórico financeiro updated com sucesso."); st.rerun()
 
 with tab2:
     st.write("Configurações gerais de administração de dados.")
