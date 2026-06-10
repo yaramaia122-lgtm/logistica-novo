@@ -9,6 +9,14 @@ if 'logado' not in st.session_state or not st.session_state['logado']:
 
 st.set_page_config(page_title="Agenda - AURA", layout="wide")
 
+# Menu Lateral Corporativo com Botão de Sair
+with st.sidebar:
+    st.markdown("---")
+    if st.button("Sair do Sistema", use_container_width=True):
+        st.session_state['logado'] = False
+        st.session_state['user'] = None
+        st.rerun()
+
 st.markdown("""
 <style>
     .stApp { background-color: #F0F8FF !important; }
@@ -37,6 +45,7 @@ try:
     f_o = rp.get_contents("observacoes.csv")
     df_o = pd.read_csv(io.StringIO(f_o.decoded_content.decode()))
 
+    # Seção de Observações
     st.markdown('<div class="agenda-header">OBSERVAÇÕES DA SEMANA</div>', unsafe_allow_html=True)
     if df_o.empty:
         dias_v = [(datetime.now() - timedelta(days=datetime.now().weekday()) + timedelta(days=i)).strftime('%d/%m/%Y') for i in range(7)]
@@ -47,6 +56,7 @@ try:
         rp.update_file("observacoes.csv", "Update", obs_edit.to_csv(index=False), f_o.sha)
         st.success("Observações salvas com sucesso."); st.rerun()
 
+    # Trecho 1: Pontes e Lacerda x Cuiabá
     st.markdown('<br><div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
     df_pl = df_v[df_v['Trajeto'] == "Pontes e Lacerda x Cuiabá"]
     cols_pl = ["Passageiro", "semana", "data", "horário", "saída", "Cia/nº voo", "Horário do Voo", "Data do Voo", "Hotel em Cuiabá", "Motorista"]
@@ -54,12 +64,22 @@ try:
         if c not in df_pl.columns: df_pl[c] = ""
     st.dataframe(df_pl[cols_pl], use_container_width=True, hide_index=True)
 
+    # Trecho 2: Cuiabá x Pontes e Lacerda
     st.markdown('<br><div class="trecho-header">CUIABÁ X PONTES E LACERDA</div>', unsafe_allow_html=True)
     df_cp = df_v[df_v['Trajeto'] == "Cuiabá x Pontes e Lacerda"]
     cols_cp = ["Passageiro", "semana", "data", "horário", "Cia/nº voo", "Hotel Cuiabá", "semana_ret", "data_ret", "horário_ret", "Motorista", "Hospedagem . Lacerda"]
     for c in cols_cp:
         if c not in df_cp.columns: df_cp[c] = ""
     st.dataframe(df_cp[cols_cp], use_container_width=True, hide_index=True)
+
+    # NOVO TRECHO ADICIONAL: Cidades diversas / Rotas Extras
+    st.markdown('<br><div class="trecho-header">OUTROS TRAJETOS E CIDADES (VIAGENS ESPECIAIS)</div>', unsafe_allow_html=True)
+    df_outros = df_v[~df_v['Trajeto'].isin(["Pontes e Lacerda x Cuiabá", "Cuiabá x Pontes e Lacerda"])]
+    cols_outros = ["Passageiro", "Trajeto", "semana", "data", "horário", "saída", "Motorista", "Hotel em Cuiabá"]
+    # Caso a coluna de destino padrão seja usada para mapear o local
+    for c in cols_outros:
+        if c not in df_outros.columns: df_outros[c] = ""
+    st.dataframe(df_outros[cols_outros], use_container_width=True, hide_index=True)
 
 except Exception as e:
     st.error(f"Erro na conexão com o banco de dados: {e}")
