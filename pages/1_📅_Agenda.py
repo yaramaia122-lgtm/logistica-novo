@@ -5,7 +5,7 @@ import io
 from datetime import datetime, timedelta
 
 if 'logado' not in st.session_state or not st.session_state['logado']:
-    st.warning("Por favor, faça login primeiro."); st.stop()
+    st.warning("Por favor, realize o login para acessar esta página."); st.stop()
 
 st.set_page_config(page_title="Agenda - AURA", layout="wide")
 
@@ -23,9 +23,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 🛡️ PROTEÇÃO CONTRA KEYERROR: Verifica se as chaves existem nos Secrets antes de travar
 if "GITHUB_TOKEN" not in st.secrets or "GITHUB_REPO" not in st.secrets:
-    st.error("⚠️ Configuração incompleta: O GITHUB_TOKEN ou GITHUB_REPO não foi encontrado nos Secrets do Streamlit.")
+    st.error("Configuração incompleta: GITHUB_TOKEN ou GITHUB_REPO não configurado nos Secrets.")
     st.stop()
 
 try:
@@ -44,11 +43,10 @@ try:
         df_o = pd.DataFrame({"Data": dias_v, "Observacao": [""]*7})
 
     obs_edit = st.data_editor(df_o, use_container_width=True, hide_index=True)
-    if st.button("💾 Salvar Observações"):
+    if st.button("Salvar Observações"):
         rp.update_file("observacoes.csv", "Update", obs_edit.to_csv(index=False), f_o.sha)
-        st.success("Salvo com sucesso!"); st.rerun()
+        st.success("Observações salvas com sucesso."); st.rerun()
 
-    # Trecho 1
     st.markdown('<br><div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
     df_pl = df_v[df_v['Trajeto'] == "Pontes e Lacerda x Cuiabá"]
     cols_pl = ["Passageiro", "semana", "data", "horário", "saída", "Cia/nº voo", "Horário do Voo", "Data do Voo", "Hotel em Cuiabá", "Motorista"]
@@ -56,7 +54,6 @@ try:
         if c not in df_pl.columns: df_pl[c] = ""
     st.dataframe(df_pl[cols_pl], use_container_width=True, hide_index=True)
 
-    # Trecho 2
     st.markdown('<br><div class="trecho-header">CUIABÁ X PONTES E LACERDA</div>', unsafe_allow_html=True)
     df_cp = df_v[df_v['Trajeto'] == "Cuiabá x Pontes e Lacerda"]
     cols_cp = ["Passageiro", "semana", "data", "horário", "Cia/nº voo", "Hotel Cuiabá", "semana_ret", "data_ret", "horário_ret", "Motorista", "Hospedagem . Lacerda"]
@@ -65,4 +62,4 @@ try:
     st.dataframe(df_cp[cols_cp], use_container_width=True, hide_index=True)
 
 except Exception as e:
-    st.error(f"Erro ao conectar com as planilhas do GitHub: {e}")
+    st.error(f"Erro na conexão com o banco de dados: {e}")
