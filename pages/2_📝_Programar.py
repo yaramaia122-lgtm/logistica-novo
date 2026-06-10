@@ -42,14 +42,14 @@ with st.form("programar_viagem"):
     vn = c1.text_input("Cia/nº voo")
     vh = c2.text_input("Horário do Voo")
     
-    st.markdown("### 💰 Custos (Acesso Restrito)")
+    st.markdown("### Custos (Acesso Restrito)")
     f1, f2, f3, f4 = st.columns(4)
     c_h = f1.number_input("Custo Hotel", 0.0)
-    c_c = f2.number_input("Custo Comb.", 0.0)
+    c_c = f2.number_input("Custo Combustível", 0.0)
     c_a = f3.number_input("Custo Aéreo", 0.0)
     c_o = f4.number_input("Outros Custos", 0.0)
     
-    if st.form_submit_button("💥 CONFIRMAR E ENVIAR PARA AGENDA"):
+    if st.form_submit_button("CONFIRMAR E ENVIAR PARA AGENDA"):
         total = c_h + c_c + c_a + c_o
         nova = pd.DataFrame([{
             "Passageiro": px, "Motorista": mt, "Trajeto": tj, "Centro_Custo": cc,
@@ -61,4 +61,4 @@ with st.form("programar_viagem"):
         }])
         df_f = pd.concat([df_v, nova], ignore_index=True)
         rp.update_file("dados_logistica.csv", "Add", df_f.to_csv(index=False), f_v.sha)
-        st.success("Logística integrada na Agenda!"); st.rerun()
+        st.success("Logística integrada na Agenda com sucesso."); st.rerun()
