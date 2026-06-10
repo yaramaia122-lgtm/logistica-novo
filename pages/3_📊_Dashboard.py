@@ -7,6 +7,13 @@ if 'logado' not in st.session_state or not st.session_state['logado']: st.stop()
 
 st.set_page_config(page_title="Dashboard - AURA", layout="wide")
 
+with st.sidebar:
+    st.markdown("---")
+    if st.button("Sair do Sistema", use_container_width=True):
+        st.session_state['logado'] = False
+        st.session_state['user'] = None
+        st.rerun()
+
 tk = st.secrets["GITHUB_TOKEN"]
 rp = Github(auth=Auth.Token(tk)).get_repo(st.secrets["GITHUB_REPO"])
 f_v = rp.get_contents("dados_logistica.csv")
