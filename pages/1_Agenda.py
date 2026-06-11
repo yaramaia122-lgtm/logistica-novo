@@ -50,15 +50,18 @@ try:
     f_o = rp.get_contents("observacoes.csv")
     df_o = pd.read_csv(io.StringIO(f_o.decoded_content.decode()))
 
-    # 🛡️ PADRONIZAÇÃO AUTOMÁTICA DE COLUNAS (Evita o KeyError)
     df_v.columns = df_v.columns.str.strip().str.lower()
     df_o.columns = df_o.columns.str.strip().str.lower()
 
-    # Garante que a coluna de passageiros exista e seja texto
     if "passageiro" in df_v.columns:
         df_v["passageiro"] = df_v["passageiro"].fillna("").astype(str)
     else:
         df_v["passageiro"] = ""
+
+    if "trajeto" in df_v.columns:
+        df_v["trajeto"] = df_v["trajeto"].fillna("").astype(str)
+    else:
+        df_v["trajeto"] = ""
 
     dias_semana_nome = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
     
@@ -86,7 +89,6 @@ try:
 
     if st.button("💾 Salvar Alterações das Observações", use_container_width=True):
         df_o["observacao"] = novas_obs
-        # Mantém os títulos em minúsculo na hora de salvar para seguir o padrão
         df_o.columns = ["dia", "data", "observacao"]
         rp.update_file("observacoes.csv", "Update Observacoes", df_o.to_csv(index=False), f_o.sha)
         st.success("Observações sincronizadas com sucesso."); st.rerun()
@@ -106,12 +108,11 @@ try:
     else:
         df_filtrado = df_v
 
-    # Configuração das colunas em letras minúsculas para combinar com a padronização
     cols_pl = ["passageiro", "semana", "data", "horário", "saída", "motorista"]
     cols_cp = ["passageiro", "semana", "data", "horário", "motorista"]
     cols_outros = ["passageiro", "trajeto", "semana", "data", "horário", "motorista"]
 
-    # Criando Relatório HTML unificado
+    # --- 📄 CONSTRUÇÃO DO RELATÓRIO UNIFICADO HTML ---
     html_relatorio = f"""
     <html>
     <head>
@@ -137,17 +138,16 @@ try:
             obs_formatada = texto_obs.replace('\n', '<br>')
             html_relatorio += f"<div class='obs-box'><b>{r_obs['dia']} ({r_obs['data']}):</b><br>{obs_formatada}</div>"
             
-    def adicionar_tabela_html(titulo, dataframe, colunas):
+    def adicionar_tabela_html(titulo, df_origem, colunas):
         global html_relatorio
         html_relatorio += f"<h3>{titulo}</h3>"
         
-        # Filtra por trajeto usando comparação em minúsculo
         if titulo == "PONTES E LACERDA X CUIABÁ":
-            df_trecho = dataframe[dataframe['trajeto'].astype(str).str.lower() == "pontes e lacerda x cuiabá"]
+            df_trecho = df_origem[df_origem['trajeto'].astype(str).str.lower() == "pontes e lacerda x cuiabá"]
         elif titulo == "CUIABÁ X PONTES E LACERDA":
-            df_trecho = dataframe[dataframe['trajeto'].astype(str).str.lower() == "cuiabá x pontes e lacerda"]
+            df_trecho = df_origem[df_origem['trajeto'].astype(str).str.lower() == "cuiabá x pontes e lacerda"]
         else:
-            df_trecho = dataframe[~dataframe['trajeto'].astype(str).str.lower().isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])]
+            df_trecho = df_origem[~df_origem['trajeto'].astype(str).str.lower().isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])]
 
         if df_trecho.empty:
             html_relatorio += "<p>Nenhuma viagem programada para este trecho.</p>"
@@ -178,7 +178,7 @@ try:
 
     st.markdown("---")
 
-    # Exibição das Tabelas na Tela com mapeamento correto
+    # Exibição das Tabelas na Tela
     st.markdown('<br><div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
     df_pl_screen = df_filtrado[df_filtrado['trajeto'].astype(str).str.lower() == "pontes e lacerda x cuiabá"]
     for c in cols_pl:
