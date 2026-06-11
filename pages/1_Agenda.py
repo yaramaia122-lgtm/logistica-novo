@@ -17,7 +17,7 @@ with st.sidebar:
         st.session_state['user'] = None
         st.switch_page("main.py")
 
-# Seu visual original totalmente preservado
+# Estilo visual original preservado
 st.markdown("""
 <style>
     .stApp { background-color: #F0F8FF !important; }
@@ -32,24 +32,22 @@ try:
     repo_nome = st.secrets["GITHUB_REPO"]
     rp = Github(auth=Auth.Token(tk)).get_repo(repo_nome)
 
-    # Leitura direta e crua dos arquivos (Sem manipulação prejudicial de colunas)
     df_v = pd.read_csv(io.StringIO(rp.get_contents("dados_logistica.csv").decoded_content.decode()))
     df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_content.decode()))
 
-    # Mapeamento tolerante: buscamos a coluna independentemente de ser "Passageiro" ou "passageiro"
     def buscar_coluna_case_insensitive(df, nome_esperado):
         for col in df.columns:
-            if col.strip().lower() == nome_esperado.lower():
+            if str(col).strip().lower() == str(nome_esperado).lower():
                 return col
         return None
 
     col_passageiro = buscar_coluna_case_insensitive(df_v, "passageiro") or "passageiro"
     col_trajeto = buscar_coluna_case_insensitive(df_v, "trajeto") or "trajeto"
 
-    # Criamos uma função de renderização que não deforma o DataFrame original
+    # 🛡️ CORREÇÃO DE ESCOPO: Ajustado 'colunas_desejadas' corretamente para evitar o SyntaxError
     def preparar_tabela_segura(df_origem, colunas_desejadas):
         df_saida = pd.DataFrame()
-        for col_alvo in colunas_requisitadas:
+        for col_alvo in colunas_desejadas:
             col_real = buscar_coluna_case_insensitive(df_origem, col_alvo)
             if col_real and col_real in df_origem.columns:
                 df_saida[col_alvo] = df_origem[col_real].fillna("").astype(str).str.strip()
@@ -57,15 +55,6 @@ try:
                 df_saida[col_alvo] = ""
         return df_saida
 
-    # Configuração das colunas exatas que o motorista necessita
-    colunas_requisitadas = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "motorista"]
-    colunas_outros = ["passageiro", "trajeto", "semana", "data", "horário", "cia/nº voo", "horário do voo", "motorista"]
-
-    # Render das Observações da Semana
-    st.markdown('<div class="agenda-header">OBSERVAÇÕES DA SEMANA</div>', unsafe_allow_html=True)
-    novas_obs = []
-    col_obs_texto = buscar_coluna_case_insensitive(df_o, "observacao") or "observacao"
-    
-    for index, row in df_o.iterrows():
-        c_dia, c_data, c_texto = st.columns([1.5, 1, 6.5])
-        c_dia.markdown(f"<p style='padding-top:15px
+    # Listas com as informações essenciais que o motorista precisa
+    cols_pl = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "motorista"]
+    cols_cp =
