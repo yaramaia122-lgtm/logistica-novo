@@ -17,7 +17,7 @@ with st.sidebar:
         st.session_state['user'] = None
         st.switch_page("main.py")
 
-# Seu estilo e visual original totalmente preservados
+# Seu estilo visual original da página preservado
 st.markdown("""
 <style>
     .stApp { background-color: #F0F8FF !important; }
@@ -27,7 +27,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Funções Auxiliares de Engenharia de Dados fora do bloco principal
 def corrigir_colunas_faltantes(df_alvo, colunas_requisitadas):
     df_temp = df_alvo.copy()
     for col in colunas_requisitadas:
@@ -35,22 +34,21 @@ def corrigir_colunas_faltantes(df_alvo, colunas_requisitadas):
             df_temp[col] = ""
     return df_temp[colunas_requisitadas]
 
-def verificar_colunas_html(df_alvo, colunas):
-    df_c = df_alvo.copy()
-    for c in colunas:
-        if c not in df_c.columns: 
-            df_c[c] = ""
-    return df_c[colunas]
-
-def criar_tabela_html(titulo, df_origem, colunas):
-    html = f"<h3>{titulo}</h3>"
-    if df_origem.empty:
-        return html + "<p>Nenhuma viagem programada.</p>"
-    df_seguro = verificar_colunas_html(df_origem, colunas)
-    html += "<table><tr>" + "".join(f"<th>{c}</th>" for c in colunas) + "</tr>"
-    for _, row in df_seguro.iterrows():
-        html += "<tr>" + "".join(f"<td>{str(row[c]) if pd.notna(row[c]) else ''}</td>" for c in colunas) + "</tr>"
-    return html + "</table>"
-
 try:
-    tk = st.secrets
+    tk = st.secrets["GITHUB_TOKEN"]
+    repo_nome = st.secrets["GITHUB_REPO"]
+    rp = Github(auth=Auth.Token(tk)).get_repo(repo_nome)
+
+    df_v = pd.read_csv(io.StringIO(rp.get_contents("dados_logistica.csv").decoded_content.decode()))
+    df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_content.decode()))
+
+    df_v.columns = df_v.columns.str.strip().str.lower()
+    df_o.columns = df_o.columns.str.strip().str.lower()
+
+    # Tratamento contra nomes duplicados e nulos
+    df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+    df_v["passageiro"] = df_v["passageiro"].fillna("").astype(str).str.strip() if "passageiro" in df_v.columns else ""
+    df_v["trajeto"] = df_v["trajeto"].fillna("").astype(str).str.strip().str.lower() if "trajeto" in df_v.columns else ""
+
+    # Painel de Observações da Tela
+    st.markdown('<div class="agenda-
