@@ -3,15 +3,12 @@ import pandas as pd
 from github import Github, Auth
 import io
 
-# Proteção de acesso direto via URL
 if 'logado' not in st.session_state or not st.session_state['logado']:
-    st.set_page_config(page_title="Acesso Negado", layout="wide")
-    st.warning("Por favor, realize o login para acessar esta página.")
-    st.stop()
+    st.session_state['logado'] = False
+    st.switch_page("main.py")
 
 st.set_page_config(page_title="Administração - AURA", layout="wide", initial_sidebar_state="expanded")
 
-# Menu Lateral Corporativo com Botão de Sair Formalizado
 with st.sidebar:
     st.write(f"Usuário ativo: **{st.session_state.get('user', 'Funcionário')}**")
     if st.button("Sair do Sistema", use_container_width=True):
@@ -41,10 +38,7 @@ try:
 
     with tab2:
         st.write("Adicione novos usuários ou force a troca de senha preenchendo 'Sim' na coluna correspondente:")
-        
-        # O data_editor permite gerenciar os logins de forma visual direta na tela
         ed_u = st.data_editor(df_u, num_rows="dynamic", use_container_width=True, hide_index=True)
-        
         if st.button("Confirmar Alterações de Segurança"):
             rp.update_file("usuarios.csv", "Edit Users", ed_u.to_csv(index=False), f_u.sha)
             st.success("Configurações de acesso corporativo sincronizadas com sucesso!"); st.rerun()
