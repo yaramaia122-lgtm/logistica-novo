@@ -74,4 +74,41 @@ if st.session_state['trocando_senha']:
                     st.session_state['user'] = st.session_state['user_atual']
                     st.session_state['trocando_senha'] = False
                     st.success("Senha alterada com sucesso! Redirecionando...")
-                    st.switch_page("pages/
+                    st.switch_page("pages/1_Agenda.py")
+
+# TELA 2: TELA DE LOGIN TRADICIONAL
+elif not st.session_state['logado']:
+    _, col_log, _ = st.columns([1, 1.2, 1])
+    with col_log:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        try:
+            url_logo = "https://raw.githubusercontent.com/yaramaia122-lgtm/logistica-aura/main/logo.png"
+            st.image(requests.get(url_logo).content, width=280)
+        except:
+            st.markdown("<h1 style='color:white; text-align:center;'>AURA APOENA</h1>", unsafe_allow_html=True)
+            
+        st.markdown("<h2 style='color:white; text-align:center; letter-spacing:3px;'>LOGISTICA</h2>", unsafe_allow_html=True)
+        
+        with st.form("login"):
+            u = st.text_input("Usuário").strip()
+            p = st.text_input("Senha", type="password")
+            if st.form_submit_button("ACESSAR SISTEMA"):
+                user_match = df_usuarios[(df_usuarios['Usuario'] == u) & (df_usuarios['Senha'] == p)]
+                if not user_match.empty:
+                    if user_match.iloc[0]['Trocar_Senha'] == "Sim":
+                        st.session_state['user_atual'] = u
+                        st.session_state['trocando_senha'] = True
+                        st.rerun()
+                    else:
+                        st.session_state['logado'] = True
+                        st.session_state['user'] = u
+                        st.switch_page("pages/1_Agenda.py")
+                else:
+                    st.error("Usuário ou Senha incorretos.")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("LIMPAR MEMÓRIA CACHE"):
+            st.cache_data.clear()
+            st.success("Memória cache limpa com sucesso.")
+else:
+    st.switch_page("pages/1_Agenda.py")
