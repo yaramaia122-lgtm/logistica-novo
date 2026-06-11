@@ -50,18 +50,13 @@ try:
     f_o = rp.get_contents("observacoes.csv")
     df_o = pd.read_csv(io.StringIO(f_o.decoded_content.decode()))
 
+    # Padronização de colunas para minúsculas
     df_v.columns = df_v.columns.str.strip().str.lower()
     df_o.columns = df_o.columns.str.strip().str.lower()
 
-    if "passageiro" in df_v.columns:
-        df_v["passageiro"] = df_v["passageiro"].fillna("").astype(str)
-    else:
-        df_v["passageiro"] = ""
-
-    if "trajeto" in df_v.columns:
-        df_v["trajeto"] = df_v["trajeto"].fillna("").astype(str)
-    else:
-        df_v["trajeto"] = ""
+    # Tratamento de sanidade dos dados
+    df_v["passageiro"] = df_v["passageiro"].fillna("").astype(str) if "passageiro" in df_v.columns else ""
+    df_v["trajeto"] = df_v["trajeto"].fillna("").astype(str) if "trajeto" in df_v.columns else ""
 
     dias_semana_nome = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
     
@@ -73,6 +68,7 @@ try:
     
     df_o["observacao"] = df_o["observacao"].fillna("").astype(str)
 
+    # Bloco de Observações
     st.markdown('<div class="agenda-header">OBSERVAÇÕES DA SEMANA</div>', unsafe_allow_html=True)
     
     novas_obs = []
@@ -95,24 +91,34 @@ try:
 
     st.markdown("---")
     
+    # Filtro por Passageiros
     st.write("### 🔍 Filtrar Programação por Passageiros")
-    lista_passageiros = sorted([p for p in df_v["passageiro"].unique() if p.strip() != ""])
+    lista_passageiros = sorted([p for p in df_v["passageiro"].unique() if p.strip() != ""]) if "passageiro" in df_v.columns else []
     
     passageiros_selecionados = st.multiselect(
         "Selecione um ou mais passageiros (Deixe vazio para mostrar todos):",
         options=lista_passageiros
     )
 
-    if passageiros_selecionados:
+    if passageiros_selecionados and "passageiro" in df_v.columns:
         df_filtrado = df_v[df_v['passageiro'].isin(passageiros_selecionados)]
     else:
         df_filtrado = df_v
 
+    # Listas desejadas para exibição
     cols_pl = ["passageiro", "semana", "data", "horário", "saída", "motorista"]
     cols_cp = ["passageiro", "semana", "data", "horário", "motorista"]
     cols_outros = ["passageiro", "trajeto", "semana", "data", "horário", "motorista"]
 
-    # --- 📄 CONSTRUÇÃO DO RELATÓRIO UNIFICADO HTML ---
+    # --- 📄 FUNÇÃO DE TRATAMENTO DE COLUNAS INEXISTENTES (BLINDAGEM CONTRA KEYERROR) ---
+    def preparar_dataframe_seguro(df_origem, colunas_desejadas):
+        df_copia = df_origem.copy()
+        for col in colunas_desejadas:
+            if col not in df_copia.columns:
+                df_copia[col] = "" # Injeta coluna vazia caso não exista no CSV
+        return df_copia[colunas_desejadas]
+
+    # --- 📄 RELATÓRIO HTML ---
     html_relatorio = f"""
     <html>
     <head>
@@ -135,8 +141,7 @@ try:
     for _, r_obs in df_o.iterrows():
         texto_obs = str(r_obs['observacao']).strip()
         if texto_obs:
-            obs_formatada = texto_obs.replace('\n', '<br>')
-            html_relatorio += f"<div class='obs-box'><b>{r_obs['dia']} ({r_obs['data']}):</b><br>{obs_formatada}</div>"
+            html_relatorio += f"<div class='obs-box'><b>{r_obs['dia']} ({r_obs['data']}):</b><br>{texto_obs.replace('\n', '<br>')}</div>"
             
     def adicionar_tabela_html(titulo, df_origem, colunas):
         global html_relatorio
@@ -153,19 +158,15 @@ try:
             html_relatorio += "<p>Nenhuma viagem programada para este trecho.</p>"
             return
             
-        df_html = df_trecho[colunas].copy()
-        for c in colunas:
-            if c not in df_html.columns: df_html[c] = ""
-            
+        df_seguro = preparar_dataframe_seguro(df_trecho, colunas)
         html_relatorio += "<table><tr>" + "".join(f"<th>{c}</th>" for c in colunas) + "</tr>"
-        for _, row in df_html.iterrows():
+        for _, row in df_seguro.iterrows():
             html_relatorio += "<tr>" + "".join(f"<td>{str(row[c]) if pd.notna(row[c]) else ''}</td>" for c in colunas) + "</tr>"
         html_relatorio += "</table>"
 
     adicionar_tabela_html("PONTES E LACERDA X CUIABÁ", df_filtrado, cols_pl)
     adicionar_tabela_html("CUIABÁ X PONTES E LACERDA", df_filtrado, cols_cp)
     adicionar_tabela_html("OUTROS TRAJETOS E CIDADES", df_filtrado, cols_outros)
-
     html_relatorio += "</body></html>"
 
     st.download_button(
@@ -178,24 +179,21 @@ try:
 
     st.markdown("---")
 
-    # Exibição das Tabelas na Tela
+    # --- 🖥️ EXIBIÇÃO DAS TABELAS NA TELA COM TRATAMENTO SEGURO ---
     st.markdown('<br><div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
     df_pl_screen = df_filtrado[df_filtrado['trajeto'].astype(str).str.lower() == "pontes e lacerda x cuiabá"]
-    for c in cols_pl:
-        if c not in df_pl_screen.columns: df_pl_screen[c] = ""
-    st.dataframe(df_pl_screen[cols_pl], use_container_width=True, hide_index=True)
+    df_pl_render = preparar_dataframe_seguro(df_pl_screen, cols_pl)
+    st.dataframe(df_pl_render, use_container_width=True, hide_index=True)
 
     st.markdown('<br><div class="trecho-header">CUIABÁ X PONTES E LACERDA</div>', unsafe_allow_html=True)
     df_cp_screen = df_filtrado[df_filtrado['trajeto'].astype(str).str.lower() == "cuiabá x pontes e lacerda"]
-    for c in cols_cp:
-        if c not in df_cp_screen.columns: df_cp_screen[c] = ""
-    st.dataframe(df_cp_screen[cols_cp], use_container_width=True, hide_index=True)
+    df_cp_render = preparar_dataframe_seguro(df_cp_screen, cols_cp)
+    st.dataframe(df_cp_render, use_container_width=True, hide_index=True)
 
     st.markdown('<br><div class="trecho-header">OUTROS TRAJETOS E CIDADES (VIAGENS ESPECIAIS)</div>', unsafe_allow_html=True)
     df_outros_screen = df_filtrado[~df_filtrado['trajeto'].astype(str).str.lower().isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])]
-    for c in cols_outros:
-        if c not in df_outros_screen.columns: df_outros_screen[c] = ""
-    st.dataframe(df_outros_screen[cols_outros], use_container_width=True, hide_index=True)
+    df_outros_render = preparar_dataframe_seguro(df_outros_screen, cols_outros)
+    st.dataframe(df_outros_render, use_container_width=True, hide_index=True)
 
 except Exception as e:
     st.error(f"Erro na conexão com o banco de dados: {e}")
