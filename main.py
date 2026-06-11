@@ -4,8 +4,10 @@ from github import Github, Auth
 import io
 import requests
 
+# Configuração formal e ocultação forçada da barra lateral
 st.set_page_config(page_title="AURA APOENA LOGISTICS", layout="wide", initial_sidebar_state="collapsed")
 
+# CSS Avançado para sumir com a barra lateral se não estiver logado e limpar o topo da página
 st.markdown("""
 <style>
     .stApp { background-color: #002D5E !important; }
@@ -18,15 +20,16 @@ st.markdown("""
         background-color: #FFFFFF !important; color: #002D5E !important;
         font-weight: 800 !important; border-radius: 10px !important; height: 48px !important;
     }
+    /* Oculta completamente o menu lateral e o botão de sanduíche na tela de login */
+    section[data-testid="stSidebar"] { display: none !important; }
+    button[data-testid="sidebar-toggle"] { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# Inicialização de estados de sessão
 if 'logado' not in st.session_state: st.session_state['logado'] = False
 if 'trocando_senha' not in st.session_state: st.session_state['trocando_senha'] = False
 if 'user_atual' not in st.session_state: st.session_state['user_atual'] = None
 
-# Função para carregar usuários do arquivo usuarios.csv no GitHub (para salvar as trocas de senha)
 def carregar_usuarios():
     try:
         tk = st.secrets["GITHUB_TOKEN"]
@@ -36,16 +39,14 @@ def carregar_usuarios():
         df = pd.read_csv(io.StringIO(f.decoded_content.decode()))
         return rp, f, df
     except:
-        # Banco de contingência caso o arquivo não exista ou falhe
         df_reserva = pd.DataFrame([
             {"Usuario": "admin", "Senha": "aura123", "Trocar_Senha": "Nao"},
-            {"Usuario": "colaborador", "Senha": "mudar123", "Trocar_Senha": "Sim"}
+            {"Usuario": "yara", "Senha": "aura2026", "Trocar_Senha": "Nao"}
         ])
         return None, None, df_reserva
 
 rp, f_github, df_usuarios = carregar_usuarios()
 
-# TELA 1: FLUXO DE TROCA DE SENHA OBRIGATÓRIA
 if st.session_state['trocando_senha']:
     _, col_log, _ = st.columns([1, 1.2, 1])
     with col_log:
@@ -62,20 +63,16 @@ if st.session_state['trocando_senha']:
                 elif nova_senha != confirma_senha:
                     st.error("As senhas informadas não são iguais.")
                 else:
-                    # Atualiza a senha no banco de dados e muda o status de troca para 'Nao'
                     df_usuarios.loc[df_usuarios['Usuario'] == st.session_state['user_atual'], 'Senha'] = nova_senha
                     df_usuarios.loc[df_usuarios['Usuario'] == st.session_state['user_atual'], 'Trocar_Senha'] = "Nao"
-                    
-                    # Salva direto no GitHub de forma silenciosa
                     if rp and f_github:
                         rp.update_file("usuarios.csv", f"Senha alterada por {st.session_state['user_atual']}", df_usuarios.to_csv(index=False), f_github.sha)
-                    
                     st.session_state['logado'] = True
+                    st.session_state['user'] = st.session_state['user_atual']
                     st.session_state['trocando_senha'] = False
                     st.success("Senha alterada com sucesso! Redirecionando...")
                     st.switch_page("pages/1_Agenda.py")
 
-# TELA 2: TELA DE LOGIN TRADICIONAL
 elif not st.session_state['logado']:
     _, col_log, _ = st.columns([1, 1.2, 1])
     with col_log:
@@ -93,9 +90,7 @@ elif not st.session_state['logado']:
             p = st.text_input("Senha", type="password")
             if st.form_submit_button("ACESSAR SISTEMA"):
                 user_match = df_usuarios[(df_usuarios['Usuario'] == u) & (df_usuarios['Senha'] == p)]
-                
                 if not user_match.empty:
-                    # Verifica se este usuário precisa trocar a senha obrigatoriamente
                     if user_match.iloc[0]['Trocar_Senha'] == "Sim":
                         st.session_state['user_atual'] = u
                         st.session_state['trocando_senha'] = True
