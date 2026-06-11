@@ -4,7 +4,8 @@ from github import Github, Auth
 import io
 
 if 'logado' not in st.session_state or not st.session_state['logado']:
-    st.warning("Por favor, realize o login."); st.stop()
+    st.session_state['logado'] = False
+    st.switch_page("main.py")
 
 st.set_page_config(page_title="Programar - AURA", layout="wide", initial_sidebar_state="expanded")
 
@@ -17,7 +18,7 @@ with st.sidebar:
 
 CC_LISTA = [
     "210301 - Moagem", "210403 - Detox", "210801 - Laboratório", "211002 - Manutenção Mecânica Planta",
-    "210405 - Lixiviação / Cianetação", "210101 - Administration Planta", "211001 - Manutencao Eletrica Planta",
+    "210405 - Lixiviação / Cianetação", "210101 - Administração Planta", "211001 - Manutencao Eletrica Planta",
     "211003 - Oficina Manutenção Planta", "210201 - Britagem Primária", "210604 - Fundição", "310101 - Almoxarifado",
     "320401 - Controladoria e Contabilidade", "310701 - Serviços Gerais", "320601 - Celula de Gestao de Contratos",
     "320101 - Suprimentos", "320502 - Tecnologia da Informação", "311202 - Care and Maintenance SF",
