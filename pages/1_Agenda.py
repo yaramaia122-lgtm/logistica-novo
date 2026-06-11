@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from github import Github, Auth
 import io
+import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 
 # Proteção de acesso direto via URL
@@ -34,7 +35,7 @@ st.markdown("""
         text-align: center; font-weight: bold; border-radius: 5px 5px 0 0;
     }
     
-    /* Remove as bordas feias e caixas cinzas das áreas de texto na hora de exibir e imprimir */
+    /* Melhora as caixas de texto das observações para aceitar multiplas linhas */
     div[data-testid="stTextArea"] textarea {
         background-color: #FFFFFF !important;
         color: #000000 !important;
@@ -73,18 +74,29 @@ try:
     f_o = rp.get_contents("observacoes.csv")
     df_o = pd.read_csv(io.StringIO(f_o.decoded_content.decode()))
 
-    # Estruturação rígida e limpa de dias caso o arquivo esteja vazio
+    # --- 🛡️ SOLUÇÃO EVOLUTIVA CONTRA O KEYERROR 'DIA' ---
+    # Se a planilha antiga não tiver a coluna "Dia", nós reestruturamos ela automaticamente aqui
     dias_semana_nome = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
-    if df_o.empty or len(df_o) < 7:
+    
+    if "Dia" not in df_o.columns or df_o.empty or len(df_o) < 7:
         dias_v = [(datetime.now() - timedelta(days=datetime.now().weekday()) + timedelta(days=i)).strftime('%d/%m') for i in range(7)]
-        df_o = pd.DataFrame({"Dia": dias_semana_nome, "Data": dias_v, "Observacao": [""]*7})
+        # Se ela tinha a coluna antiga "Observacao", tentamos reaproveitar os textos antigos
+        textos_antigos = df_o["Observacao"].tolist() if "Observacao" in df_o.columns else [""]*7
+        if len(textos_antigos) < 7:
+            textos_antigos += [""] * (7 - len(textos_antigos))
+            
+        df_o = pd.DataFrame({
+            "Dia": dias_semana_nome, 
+            "Data": dias_v, 
+            "Observacao": textos_antigos[:7]
+        })
     
     df_o["Observacao"] = df_o["Observacao"].astype(str).replace("nan", "")
 
     # Painel Superior de Título das Observações
     st.markdown('<div class="agenda-header">OBSERVAÇÕES DA SEMANA</div>', unsafe_allow_html=True)
     
-    # Construção das linhas expandidas dinamicamente baseada na imagem de referência
+    # Construção das linhas expandidas dinamicamente
     novas_obs = []
     for index, row in df_o.iterrows():
         c_dia, c_data, c_texto = st.columns([1.5, 1, 6.5])
@@ -93,7 +105,6 @@ try:
         with c_data:
             st.markdown(f"<p style='padding-top:15px; color:#555555;'>{row['Data']}</p>", unsafe_allow_html=True)
         with c_texto:
-            # st.text_area expande verticalmente aceitando múltiplos Enters/Alt+Enters
             texto_inserido = st.text_area(
                 label=f"Obs {row['Dia']}", 
                 value=row['Observacao'], 
@@ -103,12 +114,12 @@ try:
             novas_obs.append(texto_inserido)
         st.markdown("<hr style='margin: 0px 0px 5px 0px; border-color:#E0E0E0;'>", unsafe_allow_html=True)
 
-    # Botão de Salvamento - Enquadrado na classe CSS para não sair na impressão
+    # Botão de Salvamento
     st.markdown('<div class="no-print">', unsafe_allow_html=True)
     if st.button("💾 Salvar Alterações das Observações", use_container_width=True):
         df_o["Observacao"] = novas_obs
         rp.update_file("observacoes.csv", "Update Observacoes", df_o.to_csv(index=False), f_o.sha)
-        st.success("Observações sincronizadas com o banco de dados."); st.rerun()
+        st.success("Observações sincronizadas com sucesso."); st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
@@ -118,9 +129,9 @@ try:
     st.write("### Filtrar e Exportar")
     passageiro_filtro = st.text_input("Digite o nome do passageiro para filtrar (Deixe em branco para ver todos):").strip().upper()
     
-    # Disparador nativo estável de impressão (Abre o salvar como PDF do sistema operacional)
+    # Disparador nativo estável de impressão (Invisível no PDF final gerado)
     if st.button("🖨️ Emitir Documento Oficial da Agenda (Salvar como PDF)", use_container_width=True):
-        st.components.v1.html("<script>window.print();</script>", height=0, width=0)
+        components.html("<script>window.print();</script>", height=0, width=0)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Filtragem inteligente dos trechos
