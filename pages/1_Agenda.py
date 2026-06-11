@@ -53,6 +53,10 @@ try:
     f_o = rp.get_contents("observacoes.csv")
     df_o = pd.read_csv(io.StringIO(f_o.decoded_content.decode()))
 
+    # --- 🛡️ BLINDAGEM CONTRA VALORES EM BRANCO (FLOAT ERROR) ---
+    # Garante que toda a coluna de passageiros seja tratada como texto e remove valores nulos
+    df_v["Passageiro"] = df_v["Passageiro"].fillna("").astype(str)
+    
     dias_semana_nome = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
     
     if "Dia" not in df_o.columns or df_o.empty or len(df_o) < 7:
@@ -61,7 +65,7 @@ try:
         if len(textos_antigos) < 7: textos_antigos += [""] * (7 - len(textos_antigos))
         df_o = pd.DataFrame({"Dia": dias_semana_nome, "Data": dias_v, "Observacao": textos_antigos[:7]})
     
-    df_o["Observacao"] = df_o["Observacao"].astype(str).replace("nan", "")
+    df_o["Observacao"] = df_o["Observacao"].fillna("").astype(str)
 
     # Painel de Observações da Semana
     st.markdown('<div class="agenda-header">OBSERVAÇÕES DA SEMANA</div>', unsafe_allow_html=True)
@@ -85,26 +89,23 @@ try:
 
     st.markdown("---")
     
-    # --- FILTRO MULTI-SELEÇÃO (ESTILO EXCEL CAIXA DE SELEÇÃO) ---
+    # --- FILTRO MULTI-SELEÇÃO CORRIGIDO ---
     st.write("### 🔍 Filtrar Programação por Passageiros")
     
-    # Captura a lista de todos os passageiros únicos cadastrados para criar as opções do filtro
-    lista_passageiros = sorted(df_v["Passageiro"].dropna().unique().tolist())
+    # Filtra strings vazias da lista de opções para o componente ficar limpo
+    lista_passageiros = sorted([p for p in df_v["Passageiro"].unique() if p.strip() != ""])
     
-    # Campo estilo Excel onde você clica e escolhe quantas pessoas quiser
     passageiros_selecionados = st.multiselect(
         "Selecione um ou mais passageiros (Deixe vazio para mostrar todos):",
         options=lista_passageiros
     )
 
-    # Aplica o filtro multi-seleção
     if passageiros_selecionados:
         df_filtrado = df_v[df_v['Passageiro'].isin(passageiros_selecionados)]
     else:
         df_filtrado = df_v
 
-    # --- 📄 FUNÇÃO DE EXPORTAÇÃO NATIVA PARA ARQUIVO ÚNICO (HTML/DOCUMENTO) ---
-    # Monta uma página única formatada em tabelas HTML com dados e observações consolidados
+    # --- 📄 FUNÇÃO DE EXPORTAÇÃO CORRIGIDA CONTRA ERROS DE TIPO ---
     html_relatorio = f"""
     <html>
     <head>
@@ -126,8 +127,9 @@ try:
         <h3>OBSERVAÇÕES DA SEMANA</h3>
     """
     for _, r_obs in df_o.iterrows():
-        if r_obs['Observacao'].strip():
-            obs_formatada = r_obs['Observacao'].replace('\n', '<br>')
+        texto_obs = str(r_obs['Observacao']).strip()
+        if texto_obs:
+            obs_formatada = texto_obs.replace('\n', '<br>')
             html_relatorio += f"<div class='obs-box'><b>{r_obs['Dia']} ({r_obs['Data']}):</b><br>{obs_formatada}</div>"
             
     def adicionar_tabela_html(titulo, dataframe, colunas):
