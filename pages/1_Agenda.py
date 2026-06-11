@@ -17,13 +17,11 @@ with st.sidebar:
         st.session_state['user'] = None
         st.switch_page("main.py")
 
-# Estilo visual original preservado
 st.markdown("""
 <style>
     .stApp { background-color: #F0F8FF !important; }
     .agenda-header { background-color: #FF7F50 !important; color: white !important; padding: 10px; text-align: center; font-weight: bold; border-radius: 10px 10px 0 0; margin-bottom: 0px; }
     .trecho-header { background-color: #002D5E !important; color: white !important; padding: 10px; text-align: center; font-weight: bold; border-radius: 5px 5px 0 0; }
-    div[data-testid="stTextArea"] textarea { background-color: #FFFFFF !important; color: #000000 !important; font-family: sans-serif !important; font-size: 14px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -33,28 +31,33 @@ try:
     rp = Github(auth=Auth.Token(tk)).get_repo(repo_nome)
 
     df_v = pd.read_csv(io.StringIO(rp.get_contents("dados_logistica.csv").decoded_content.decode()))
-    df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_content.decode()))
+    
+    # Forçar cópia limpa com colunas em minúsculo para evitar qualquer conflito
+    df_v.columns = df_v.columns.str.strip().str.lower()
+    df_v = df_v.loc[:, ~df_v.columns.duplicated()]
 
-    def buscar_coluna_case_insensitive(df, nome_esperado):
-        for col in df.columns:
-            if str(col).strip().lower() == str(nome_esperado).lower():
-                return col
-        return None
+    # Garantir strings limpas nas colunas essenciais
+    for c in df_v.columns:
+        df_v[c] = df_v[c].fillna("").astype(str).str.strip()
 
-    col_passageiro = buscar_coluna_case_insensitive(df_v, "passageiro") or "passageiro"
-    col_trajeto = buscar_coluna_case_insensitive(df_v, "trajeto") or "trajeto"
+    # Injeção direta caso alguma coluna não exista no CSV original
+    colunas_motorista = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "motorista"]
+    for col in colunas_motorista:
+        if col not in df_v.columns:
+            df_v[col] = ""
 
-    # 🛡️ CORREÇÃO DE ESCOPO: Ajustado 'colunas_desejadas' corretamente para evitar o SyntaxError
-    def preparar_tabela_segura(df_origem, colunas_desejadas):
-        df_saida = pd.DataFrame()
-        for col_alvo in colunas_desejadas:
-            col_real = buscar_coluna_case_insensitive(df_origem, col_alvo)
-            if col_real and col_real in df_origem.columns:
-                df_saida[col_alvo] = df_origem[col_real].fillna("").astype(str).str.strip()
-            else:
-                df_saida[col_alvo] = ""
-        return df_saida
+    st.markdown('<div class="agenda-header">PROGRAMAÇÃO DA LOGÍSTICA</div>', unsafe_allow_html=True)
 
-    # Listas com as informações essenciais que o motorista precisa
-    cols_pl = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "motorista"]
-    cols_cp =
+    # Filtragem direta baseada em texto purificado
+    trajetos_series = df_v["trajeto"].str.lower()
+
+    st.markdown('<br><div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
+    df_pl = df_v[trajetos_series == "pontes e lacerda x cuiabá"]
+    st.dataframe(df_pl[colunas_motorista], use_container_width=True, hide_index=True)
+
+    st.markdown('<br><div class="trecho-header">CUIABÁ X PONTES E LACERDA</div>', unsafe_allow_html=True)
+    df_cp = df_v[trajetos_series == "cuiabá x pontes e lacerda"]
+    st.dataframe(df_cp[colunas_motorista], use_container_width=True, hide_index=True)
+
+    st.markdown('<br><div class="trecho-header">OUTROS TRAJETOS E CIDADES (VIAGENS ESPECIAIS)</div>', unsafe_allow_html=True)
+    df_outros = df
