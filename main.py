@@ -55,11 +55,4 @@ if st.session_state['trocando_senha']:
     _, col_log, _ = st.columns([1, 1.2, 1])
     with col_log:
         st.markdown("<br><br><h2 style='color:white; text-align:center;'>Primeiro Acesso</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='color:white; text-align:center;'>Por políticas de segurança, altere sua senha temporária.</p>", unsafe_allow_html=True)
-        
-        with st.form("nova_senha_form"):
-            nova_senha = st.text_input("Digite sua nova senha definitiva", type="password")
-            confirma_senha = st.text_input("Confirme a nova senha", type="password")
-            
-            if st.form_submit_button("SALVAR NOVA SENHA"):
-                if len(nova_senha) < 4:
+        st.markdown("<p style='color:white
