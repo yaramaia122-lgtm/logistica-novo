@@ -4,8 +4,10 @@ from github import Github, Auth
 import io
 import requests
 
+# Configuração formal e ocultação forçada da barra lateral antes do login
 st.set_page_config(page_title="AURA APOENA LOGISTICS", layout="wide", initial_sidebar_state="collapsed")
 
+# CSS Avançado para esconder a barra lateral na tela de login e estilizar os campos
 st.markdown("""
 <style>
     .stApp { background-color: #002D5E !important; }
@@ -44,6 +46,11 @@ def carregar_usuarios():
 
 rp, f_github, df_usuarios = carregar_usuarios()
 
+# Força a padronização das colunas do arquivo de usuários para evitar erros de maiúsculas
+if df_usuarios is not None and not df_usuarios.empty:
+    df_usuarios.columns = df_usuarios.columns.str.strip()
+
+# TELA 1: FLUXO DE TROCA DE SENHA OBRIGATÓRIA
 if st.session_state['trocando_senha']:
     _, col_log, _ = st.columns([1, 1.2, 1])
     with col_log:
@@ -54,4 +61,5 @@ if st.session_state['trocando_senha']:
             nova_senha = st.text_input("Digite sua nova senha definitiva", type="password")
             confirma_senha = st.text_input("Confirme a nova senha", type="password")
             
-            if st.
+            if st.form_submit_button("SALVAR NOVA SENHA"):
+                if len(nova_senha) < 4:
