@@ -4,7 +4,7 @@ from github import Github, Auth
 import io
 import requests
 
-# Configuração da página e ocultação da barra lateral antes do login
+# Configuração formal da página e ocultação da barra lateral antes do login
 st.set_page_config(page_title="AURA APOENA LOGISTICS", layout="wide", initial_sidebar_state="collapsed")
 
 # CSS Compactado e Blindado contra truncamento de strings
@@ -45,19 +45,4 @@ def carregar_usuarios():
         df = pd.read_csv(io.StringIO(f.decoded_content.decode()))
         return rp, f, df
     except:
-        df_reserva = pd.DataFrame([
-            {"Usuario": "admin", "Senha": "aura123", "Trocar_Senha": "Nao"},
-            {"Usuario": "yara", "Senha": "aura2026", "Trocar_Senha": "Nao"}
-        ])
-        return None, None, df_reserva
-
-rp, f_github, df_usuarios = carregar_usuarios()
-if df_usuarios is not None and not df_usuarios.empty:
-    df_usuarios.columns = df_usuarios.columns.str.strip()
-
-# TELA 1: FLUXO DE TROCA DE SENHA OBRIGATÓRIA (REVISADO LINHA A LINHA)
-if st.session_state['trocando_senha']:
-    _, col_log, _ = st.columns([1, 1.1, 1])
-    with col_log:
-        st.markdown("<br><br><h2 style='color:white; text-align:center;'>Primeiro Acesso</h2>", unsafe_allow_html=True)
-        with st.form("nova_senha_form"):
+        df_reserva = pd.DataFrame(
