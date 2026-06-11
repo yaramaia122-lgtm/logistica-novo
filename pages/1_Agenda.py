@@ -5,15 +5,12 @@ import io
 import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 
-# Proteção de acesso direto via URL
 if 'logado' not in st.session_state or not st.session_state['logado']:
-    st.set_page_config(page_title="Acesso Negado", layout="wide")
-    st.warning("Por favor, realize o login para acessar esta página.")
-    st.stop()
+    st.session_state['logado'] = False
+    st.switch_page("main.py")
 
 st.set_page_config(page_title="Agenda - AURA", layout="wide", initial_sidebar_state="expanded")
 
-# Menu Lateral Corporativo com Botão de Sair Formalizado
 with st.sidebar:
     st.write(f"Usuário ativo: **{st.session_state.get('user', 'Funcionário')}**")
     if st.button("Sair do Sistema", use_container_width=True):
@@ -21,7 +18,6 @@ with st.sidebar:
         st.session_state['user'] = None
         st.switch_page("main.py")
 
-# Estilização CSS Corporativa
 st.markdown("""
 <style>
     .stApp { background-color: #F0F8FF !important; }
@@ -54,9 +50,7 @@ try:
     f_o = rp.get_contents("observacoes.csv")
     df_o = pd.read_csv(io.StringIO(f_o.decoded_content.decode()))
 
-    # Tratamento de valores nulos e strings para evitar quebras
     df_v["Passageiro"] = df_v["Passageiro"].fillna("").astype(str)
-    
     dias_semana_nome = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
     
     if "Dia" not in df_o.columns or df_o.empty or len(df_o) < 7:
@@ -67,7 +61,6 @@ try:
     
     df_o["Observacao"] = df_o["Observacao"].fillna("").astype(str)
 
-    # Painel de Observações da Semana
     st.markdown('<div class="agenda-header">OBSERVAÇÕES DA SEMANA</div>', unsafe_allow_html=True)
     
     novas_obs = []
@@ -89,9 +82,7 @@ try:
 
     st.markdown("---")
     
-    # --- FILTRO MULTI-SELEÇÃO ESTILO EXCEL ---
     st.write("### 🔍 Filtrar Programação por Passageiros")
-    
     lista_passageiros = sorted([p for p in df_v["Passageiro"].unique() if p.strip() != ""])
     
     passageiros_selecionados = st.multiselect(
@@ -104,7 +95,7 @@ try:
     else:
         df_filtrado = df_v
 
-    # --- 📄 GERADOR DO ARQUIVO UNIFICADO (HTML/PDF) ---
+    # Relatório unificado estruturado
     html_relatorio = f"""
     <html>
     <head>
@@ -122,7 +113,6 @@ try:
     <body>
         <h2>AURA APOENA LOGISTICS - AGENDA CORPORATIVA</h2>
         <p>Relatório gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M')}</p>
-        
         <h3>OBSERVAÇÕES DA SEMANA</h3>
     """
     for _, r_obs in df_o.iterrows():
@@ -155,7 +145,6 @@ try:
 
     html_relatorio += "</body></html>"
 
-    # Botão de download direto do arquivo de Agenda Consolidadado
     st.download_button(
         label="📄 Baixar Relatório Unificado da Agenda (HTML/PDF)",
         data=html_relatorio,
@@ -166,7 +155,6 @@ try:
 
     st.markdown("---")
 
-    # Exibição das Tabelas na Tela
     st.markdown('<br><div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
     df_pl_screen = df_filtrado[df_filtrado['Trajeto'] == "Pontes e Lacerda x Cuiabá"]
     for c in cols_pl:
@@ -186,4 +174,4 @@ try:
     st.dataframe(df_outros_screen[cols_outros], use_container_width=True, hide_index=True)
 
 except Exception as e:
-    st
+    st.error(f"Erro na conexão com o banco de dados: {e}")
