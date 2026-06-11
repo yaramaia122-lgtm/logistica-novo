@@ -2,101 +2,76 @@ import streamlit as st
 import pandas as pd
 from github import Github, Auth
 import io
-import streamlit.components.v1 as components
-from datetime import datetime, timedelta
+import requests
 
-if 'logado' not in st.session_state or not st.session_state['logado']:
-    st.session_state['logado'] = False
-    st.switch_page("main.py")
+# Configuração formal e ocultação forçada da barra lateral antes do login
+st.set_page_config(page_title="AURA APOENA LOGISTICS", layout="wide", initial_sidebar_state="collapsed")
 
-st.set_page_config(page_title="Agenda - AURA", layout="wide", initial_sidebar_state="expanded")
-
-with st.sidebar:
-    st.write(f"Usuário ativo: **{st.session_state.get('user', 'Funcionário')}**")
-    if st.button("Sair do Sistema", use_container_width=True):
-        st.session_state['logado'] = False
-        st.session_state['user'] = None
-        st.switch_page("main.py")
-
+# CSS Avançado para esconder a barra lateral na tela de login e estilizar os campos
 st.markdown("""
 <style>
-    .stApp { background-color: #F0F8FF !important; }
-    .agenda-header {
-        background-color: #FF7F50 !important; color: white !important; padding: 10px;
-        text-align: center; font-weight: bold; border-radius: 10px 10px 0 0;
-        margin-bottom: 0px;
+    .stApp { background-color: #002D5E !important; }
+    div[data-testid="stForm"] { background-color: #002D5E !important; border: none !important; }
+    label { color: #FFFFFF !important; font-weight: 700; }
+    div[data-testid="stForm"] .stTextInput input {
+        background-color: #FFFFFF !important; color: #002D5E !important; border-radius: 8px !important;
     }
-    .trecho-header {
-        background-color: #002D5E !important; color: white !important; padding: 10px;
-        text-align: center; font-weight: bold; border-radius: 5px 5px 0 0;
+    .stButton>button {
+        background-color: #FFFFFF !important; color: #002D5E !important;
+        font-weight: 800 !important; border-radius: 10px !important; height: 48px !important;
     }
-    div[data-testid="stTextArea"] textarea {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-        font-family: sans-serif !important;
-        font-size: 14px !important;
-    }
+    section[data-testid="stSidebar"] { display: none !important; }
+    button[data-testid="sidebar-toggle"] { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
-try:
-    tk = st.secrets["GITHUB_TOKEN"]
-    repo_nome = st.secrets["GITHUB_REPO"]
-    rp = Github(auth=Auth.Token(tk)).get_repo(repo_nome)
+if 'logado' not in st.session_state: st.session_state['logado'] = False
+if 'trocando_senha' not in st.session_state: st.session_state['trocando_senha'] = False
+if 'user_atual' not in st.session_state: st.session_state['user_atual'] = None
 
-    f_v = rp.get_contents("dados_logistica.csv")
-    df_v = pd.read_csv(io.StringIO(f_v.decoded_content.decode()))
-    
-    f_o = rp.get_contents("observacoes.csv")
-    df_o = pd.read_csv(io.StringIO(f_o.decoded_content.decode()))
+def carregar_usuarios():
+    try:
+        tk = st.secrets["GITHUB_TOKEN"]
+        repo_nome = st.secrets["GITHUB_REPO"]
+        rp = Github(auth=Auth.Token(tk)).get_repo(repo_nome)
+        f = rp.get_contents("usuarios.csv")
+        df = pd.read_csv(io.StringIO(f.decoded_content.decode()))
+        return rp, f, df
+    except:
+        df_reserva = pd.DataFrame([
+            {"Usuario": "admin", "Senha": "aura123", "Trocar_Senha": "Nao"},
+            {"Usuario": "yara", "Senha": "aura2026", "Trocar_Senha": "Nao"}
+        ])
+        return None, None, df_reserva
 
-    # Padronização de segurança para os nomes das colunas
-    df_v.columns = df_v.columns.str.strip().str.lower()
-    df_o.columns = df_o.columns.str.strip().str.lower()
+rp, f_github, df_usuarios = carregar_usuarios()
 
-    if "passageiro" in df_v.columns:
-        df_v["passageiro"] = df_v["passageiro"].fillna("").astype(str)
-    else:
-        df_v["passageiro"] = ""
+if df_usuarios is not None and not df_usuarios.empty:
+    df_usuarios.columns = df_usuarios.columns.str.strip()
 
-    if "trajeto" in df_v.columns:
-        df_v["trajeto"] = df_v["trajeto"].fillna("").astype(str)
-    else:
-        df_v["trajeto"] = ""
-
-    dias_semana_nome = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
-    
-    if "dia" not in df_o.columns or df_o.empty or len(df_o) < 7:
-        dias_v = [(datetime.now() - timedelta(days=datetime.now().weekday()) + timedelta(days=i)).strftime('%d/%m') for i in range(7)]
-        textos_antigos = df_o["observacao"].tolist() if "observacao" in df_o.columns else [""]*7
-        if len(textos_antigos) < 7: textos_antigos += [""] * (7 - len(textos_antigos))
-        df_o = pd.DataFrame({"dia": dias_semana_nome, "data": dias_v, "observacao": textos_antigos[:7]})
-    
-    df_o["observacao"] = df_o["observacao"].fillna("").astype(str)
-
-    # Painel de Observações
-    st.markdown('<div class="agenda-header">OBSERVAÇÕES DA SEMANA</div>', unsafe_allow_html=True)
-    
-    novas_obs = []
-    for index, row in df_o.iterrows():
-        c_dia, c_data, c_texto = st.columns([1.5, 1, 6.5])
-        with c_dia:
-            st.markdown(f"<p style='padding-top:15px; font-weight:bold; color:#333333;'>{row['dia']}</p>", unsafe_allow_html=True)
-        with c_data:
-            st.markdown(f"<p style='padding-top:15px; color:#555555;'>{row['data']}</p>", unsafe_allow_html=True)
-        with c_texto:
-            texto_inserido = st.text_area(label=f"Obs {row['dia']}", value=row['observacao'], key=f"obs_{index}", label_visibility="collapsed")
-            novas_obs.append(texto_inserido)
-        st.markdown("<hr style='margin: 0px 0px 5px 0px; border-color:#E0E0E0;'>", unsafe_allow_html=True)
-
-    if st.button("💾 Salvar Alterações das Observações", use_container_width=True):
-        df_o["observacao"] = novas_obs
-        df_o.columns = ["dia", "data", "observacao"]
-        rp.update_file("observacoes.csv", "Update Observacoes", df_o.to_csv(index=False), f_o.sha)
-        st.success("Observações sincronizadas com sucesso."); st.rerun()
-
-    st.markdown("---")
-    
-    # Filtro Multi-Seleção Avançado
-    st.write("### 🔍 Filtrar Programação por Passageiros")
-    lista_passageiros = sorted(
+# TELA 1: FLUXO DE TROCA DE SENHA OBRIGATÓRIA
+if st.session_state['trocando_senha']:
+    _, col_log, _ = st.columns([1, 1.2, 1])
+    with col_log:
+        st.markdown("<br><br><h2 style='color:white; text-align:center;'>Primeiro Acesso</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='color:white; text-align:center;'>Por políticas de segurança, altere sua senha temporária.</p>", unsafe_allow_html=True)
+        
+        with st.form("nova_senha_form"):
+            nova_senha = st.text_input("Digite sua nova senha definitiva", type="password")
+            confirma_senha = st.text_input("Confirme a nova senha", type="password")
+            
+            if st.form_submit_button("SALVAR NOVA SENHA"):
+                if len(nova_senha) < 4:
+                    st.error("A senha deve ter pelo menos 4 caracteres.")
+                elif nova_senha != confirma_senha:
+                    st.error("As senhas informadas não são iguais.")
+                else:
+                    df_usuarios.loc[df_usuarios['Usuario'] == st.session_state['user_atual'], 'Senha'] = nova_senha
+                    df_usuarios.loc[df_usuarios['Usuario'] == st.session_state['user_atual'], 'Trocar_Senha'] = "Nao"
+                    if rp and f_github:
+                        rp.update_file("usuarios.csv", f"Senha alterada por {st.session_state['user_atual']}", df_usuarios.to_csv(index=False), f_github.sha)
+                    st.session_state['logado'] = True
+                    st.session_state['user'] = st.session_state['user_atual']
+                    st.session_state['trocando_senha'] = False
+                    st.success("Senha alterada com sucesso! Redirecionando...")
+                    st.switch_page("pages/
