@@ -3,15 +3,12 @@ import pandas as pd
 from github import Github, Auth
 import io
 
-# Proteção de acesso direto via URL
 if 'logado' not in st.session_state or not st.session_state['logado']:
-    st.set_page_config(page_title="Acesso Negado", layout="wide")
-    st.warning("Por favor, realize o login para acessar esta página.")
-    st.stop()
+    st.session_state['logado'] = False
+    st.switch_page("main.py")
 
 st.set_page_config(page_title="Dashboard - AURA", layout="wide", initial_sidebar_state="expanded")
 
-# Menu Lateral Corporativo com Botão de Sair Formalizado
 with st.sidebar:
     st.write(f"Usuário ativo: **{st.session_state.get('user', 'Funcionário')}**")
     if st.button("Sair do Sistema", use_container_width=True):
@@ -23,7 +20,6 @@ try:
     tk = st.secrets["GITHUB_TOKEN"]
     repo_nome = st.secrets["GITHUB_REPO"]
     rp = Github(auth=Auth.Token(tk)).get_repo(repo_nome)
-    
     f_v = rp.get_contents("dados_logistica.csv")
     df_v = pd.read_csv(io.StringIO(f_v.decoded_content.decode()))
 
