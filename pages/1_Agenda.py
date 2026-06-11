@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from github import Github, Auth
 import io
+import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 
 # Proteção de acesso direto via URL
@@ -53,8 +54,7 @@ try:
     f_o = rp.get_contents("observacoes.csv")
     df_o = pd.read_csv(io.StringIO(f_o.decoded_content.decode()))
 
-    # --- 🛡️ BLINDAGEM CONTRA VALORES EM BRANCO (FLOAT ERROR) ---
-    # Garante que toda a coluna de passageiros seja tratada como texto e remove valores nulos
+    # Tratamento de valores nulos e strings para evitar quebras
     df_v["Passageiro"] = df_v["Passageiro"].fillna("").astype(str)
     
     dias_semana_nome = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
@@ -89,10 +89,9 @@ try:
 
     st.markdown("---")
     
-    # --- FILTRO MULTI-SELEÇÃO CORRIGIDO ---
+    # --- FILTRO MULTI-SELEÇÃO ESTILO EXCEL ---
     st.write("### 🔍 Filtrar Programação por Passageiros")
     
-    # Filtra strings vazias da lista de opções para o componente ficar limpo
     lista_passageiros = sorted([p for p in df_v["Passageiro"].unique() if p.strip() != ""])
     
     passageiros_selecionados = st.multiselect(
@@ -105,7 +104,7 @@ try:
     else:
         df_filtrado = df_v
 
-    # --- 📄 FUNÇÃO DE EXPORTAÇÃO CORRIGIDA CONTRA ERROS DE TIPO ---
+    # --- 📄 GERADOR DO ARQUIVO UNIFICADO (HTML/PDF) ---
     html_relatorio = f"""
     <html>
     <head>
@@ -187,4 +186,4 @@ try:
     st.dataframe(df_outros_screen[cols_outros], use_container_width=True, hide_index=True)
 
 except Exception as e:
-    st.error(f"Erro na conexão com o banco de dados: {e}")
+    st
