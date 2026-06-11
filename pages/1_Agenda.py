@@ -92,11 +92,12 @@ try:
 
     df_f = df_v[df_v['passageiro'].isin(p_sel)] if p_sel else df_v
 
-    cols_pl = ["passageiro", "semana", "data", "horário", "saída", "motorista"]
-    cols_cp = ["passageiro", "semana", "data", "horário", "motorista"]
-    cols_outros = ["passageiro", "trajeto", "semana", "data", "horário", "motorista"]
+    # 🛡️ EXPANSÃO TÉCNICA DAS COLUNAS (Inclusão de voo e horário do voo)
+    cols_pl = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "motorista"]
+    cols_cp = ["passageiro", "semana", "data", "horário", "cia/nº voo", "horário do voo", "motorista"]
+    cols_outros = ["passageiro", "trajeto", "semana", "data", "horário", "cia/nº voo", "horário do voo", "motorista"]
 
-    # Montagem Linear Textual do Relatório Elaborado
+    # Montagem do Relatório Elaborado
     data_hoje = datetime.now().strftime('%d/%m/%Y às %H:%M')
     
     html_relatorio = "<html><head><meta charset='utf-8'><style>"
@@ -130,6 +131,7 @@ try:
 
     st.markdown("---")
 
+    # Exibição segura das tabelas na tela contendo as colunas de voo
     st.markdown('<br><div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
     df_pl_screen = df_f[df_f['trajeto'] == "pontes e lacerda x cuiabá"]
     st.dataframe(corrigir_colunas_faltantes(df_pl_screen, cols_pl), use_container_width=True, hide_index=True)
