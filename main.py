@@ -4,10 +4,10 @@ from github import Github, Auth
 import io
 import requests
 
-# Configuração formal da página e ocultação da barra lateral antes do login
+# Configuração da página e ocultação da barra lateral antes do login
 st.set_page_config(page_title="AURA APOENA LOGISTICS", layout="wide", initial_sidebar_state="collapsed")
 
-# CSS Otimizado para a Interface de Login (Sem risco de quebra de string)
+# CSS Compactado e Blindado contra truncamento de strings
 st.markdown("""
 <style>
     .stApp { background: linear-gradient(135deg, #001F42 0%, #002D5E 100%) !important; }
@@ -55,12 +55,9 @@ rp, f_github, df_usuarios = carregar_usuarios()
 if df_usuarios is not None and not df_usuarios.empty:
     df_usuarios.columns = df_usuarios.columns.str.strip()
 
-# TELA 1: FLUXO DE TROCA DE SENHA OBRIGATÓRIA
+# TELA 1: FLUXO DE TROCA DE SENHA OBRIGATÓRIA (REVISADO LINHA A LINHA)
 if st.session_state['trocando_senha']:
     _, col_log, _ = st.columns([1, 1.1, 1])
     with col_log:
         st.markdown("<br><br><h2 style='color:white; text-align:center;'>Primeiro Acesso</h2>", unsafe_allow_html=True)
         with st.form("nova_senha_form"):
-            nova_senha = st.text_input("Nova Senha Definitiva", type="password")
-            confirma_senha = st.text_input("Confirme a Nova Senha", type="password")
-            if st.form_submit_button("SALVAR NOVA
