@@ -1,22 +1,23 @@
-import streamlit st
+import streamlit as st
 import pandas as pd
 from github import Github, Auth
 import io
 
-if 'logado' not in st.session_state or not st.session_state['logado']: st.stop()
+if 'logado' not in st.session_state or not st.session_state['logado']:
+    st.warning("Por favor, realize o login."); st.stop()
 
-st.set_page_config(page_title="Programar - AURA", layout="wide")
+st.set_page_config(page_title="Programar - AURA", layout="wide", initial_sidebar_state="expanded")
 
 with st.sidebar:
-    st.markdown("---")
+    st.write(f"Usuário ativo: **{st.session_state.get('user', 'Funcionário')}**")
     if st.button("Sair do Sistema", use_container_width=True):
         st.session_state['logado'] = False
         st.session_state['user'] = None
-        st.rerun()
+        st.switch_page("main.py")
 
 CC_LISTA = [
     "210301 - Moagem", "210403 - Detox", "210801 - Laboratório", "211002 - Manutenção Mecânica Planta",
-    "210405 - Lixiviação / Cianetação", "210101 - Administração Planta", "211001 - Manutencao Eletrica Planta",
+    "210405 - Lixiviação / Cianetação", "210101 - Administration Planta", "211001 - Manutencao Eletrica Planta",
     "211003 - Oficina Manutenção Planta", "210201 - Britagem Primária", "210604 - Fundição", "310101 - Almoxarifado",
     "320401 - Controladoria e Contabilidade", "310701 - Serviços Gerais", "320601 - Celula de Gestao de Contratos",
     "320101 - Suprimentos", "320502 - Tecnologia da Informação", "311202 - Care and Maintenance SF",
@@ -39,11 +40,8 @@ with st.form("programar_viagem"):
     c1, c2 = st.columns(2)
     px = c1.text_input("Passageiro").upper()
     mt = c1.selectbox("Motorista", ["Ilson", "Antonio", "Vagno", "Cido", "A definir", "Outro"])
-    
-    # ADICIONADO A OPÇÃO FLEXÍVEL DE SELEÇÃO DE TRAJETO
     tj_selecao = c1.selectbox("Trecho", ["Pontes e Lacerda x Cuiabá", "Cuiabá x Pontes e Lacerda", "Outras Cidades (Especificar abaixo)"])
     tj_custom = c1.text_input("Se selecionou 'Outras Cidades', especifique o trajeto (Ex: Lacerda x Vila Bela):").strip()
-    
     cc = c1.selectbox("Centro de Custo", CC_LISTA)
     
     dt = c2.date_input("Data")
@@ -61,9 +59,7 @@ with st.form("programar_viagem"):
     c_o = f4.number_input("Outros Custos", 0.0)
     
     if st.form_submit_button("CONFIRMAR E ENVIAR PARA AGENDA"):
-        # Validação do trecho customizado
         trajeto_final = tj_custom if tj_selecao == "Outras Cidades (Especificar abaixo)" and tj_custom != "" else tj_selecao
-        
         total = c_h + c_c + c_a + c_o
         nova = pd.DataFrame([{
             "Passageiro": px, "Motorista": mt, "Trajeto": trajeto_final, "Centro_Custo": cc,
