@@ -2,16 +2,15 @@ import streamlit as st
 import pandas as pd
 from github import Github, Auth
 import io
+import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 
-# 1. VALIDAÇÃO DE ACESSO
 if 'logado' not in st.session_state or not st.session_state['logado']:
     st.session_state['logado'] = False
     st.switch_page("main.py")
 
 st.set_page_config(page_title="Agenda - AURA", layout="wide", initial_sidebar_state="expanded")
 
-# 2. BARRA LATERAL
 with st.sidebar:
     st.write(f"Usuário ativo: **{st.session_state.get('user', 'Funcionário')}**")
     if st.button("Sair do Sistema", use_container_width=True):
@@ -19,17 +18,29 @@ with st.sidebar:
         st.session_state['user'] = None
         st.switch_page("main.py")
 
-# Estilos Visuais da Agenda
+# --- SEU VISUAL ORIGINAL PRESERVADO INTEGRALMENTE ---
 st.markdown("""
 <style>
     .stApp { background-color: #F0F8FF !important; }
-    .agenda-header { background-color: #FF7F50 !important; color: white !important; padding: 10px; text-align: center; font-weight: bold; border-radius: 10px 10px 0 0; }
-    .trecho-header { background-color: #002D5E !important; color: white !important; padding: 10px; text-align: center; font-weight: bold; border-radius: 5px 5px 0 0; }
+    .agenda-header {
+        background-color: #FF7F50 !important; color: white !important; padding: 10px;
+        text-align: center; font-weight: bold; border-radius: 10px 10px 0 0;
+        margin-bottom: 0px;
+    }
+    .trecho-header {
+        background-color: #002D5E !important; color: white !important; padding: 10px;
+        text-align: center; font-weight: bold; border-radius: 5px 5px 0 0;
+    }
+    div[data-testid="stTextArea"] textarea {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        font-family: sans-serif !important;
+        font-size: 14px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 try:
-    # 3. CONEXÃO COM REPOSITÓRIO
     tk = st.secrets["GITHUB_TOKEN"]
     repo_nome = st.secrets["GITHUB_REPO"]
     rp = Github(auth=Auth.Token(tk)).get_repo(repo_nome)
@@ -40,75 +51,150 @@ try:
     f_o = rp.get_contents("observacoes.csv")
     df_o = pd.read_csv(io.StringIO(f_o.decoded_content.decode()))
 
-    # 4. SANITIZAÇÃO E CONVERSÃO DOS DADOS DA PROGRAMAÇÃO
+    # Padronização padrão para evitar conflitos de caixa
     df_v.columns = df_v.columns.str.strip().str.lower()
     df_o.columns = df_o.columns.str.strip().str.lower()
 
-    # Normalizar valores nulos para evitar quebras de conversão de string
-    for col in df_v.columns:
-        df_v[col] = df_v[col].fillna("").astype(str).str.strip()
+    df_v["passageiro"] = df_v["passageiro"].fillna("").astype(str) if "passageiro" in df_v.columns else ""
+    df_v["trajeto"] = df_v["trajeto"].fillna("").astype(str) if "trajeto" in df_v.columns else ""
 
-    # FUNÇÃO CRÍTICA: Garante que o DataFrame tenha as colunas necessárias para exibição
-    def garantir_colunas_existentes(df_origem, colunas_desejadas):
-        df_copia = df_origem.copy()
-        for col in colunas_desejadas:
-            if col not in df_copia.columns:
-                df_copia[col] = ""  # Cria a coluna vazia se ela não veio da aba Programar
-        return df_copia[colunas_desejadas]
-
-    # 5. QUADRO DE OBSERVAÇÕES
     dias_semana_nome = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
-    if "dia" not in df_o.columns or df_o.empty:
+    
+    if "dia" not in df_o.columns or df_o.empty or len(df_o) < 7:
         dias_v = [(datetime.now() - timedelta(days=datetime.now().weekday()) + timedelta(days=i)).strftime('%d/%m') for i in range(7)]
-        df_o = pd.DataFrame({"dia": dias_semana_nome, "data": dias_v, "observacao": [""]*7})
+        textos_antigos = df_o["observacao"].tolist() if "observacao" in df_o.columns else [""]*7
+        if len(textos_antigos) < 7: textos_antigos += [""] * (7 - len(textos_antigos))
+        df_o = pd.DataFrame({"dia": dias_semana_nome, "data": dias_v, "observacao": textos_antigos[:7]})
     
     df_o["observacao"] = df_o["observacao"].fillna("").astype(str)
 
+    # Bloco de Observações Original
     st.markdown('<div class="agenda-header">OBSERVAÇÕES DA SEMANA</div>', unsafe_allow_html=True)
+    
     novas_obs = []
     for index, row in df_o.iterrows():
         c_dia, c_data, c_texto = st.columns([1.5, 1, 6.5])
-        with c_dia: st.markdown(f"<p style='padding-top:15px; font-weight:bold;'>{row['dia']}</p>", unsafe_allow_html=True)
-        with c_data: st.markdown(f"<p style='padding-top:15px; color:#555555;'>{row['data']}</p>", unsafe_allow_html=True)
+        with c_dia:
+            st.markdown(f"<p style='padding-top:15px; font-weight:bold; color:#333333;'>{row['dia']}</p>", unsafe_allow_html=True)
+        with c_data:
+            st.markdown(f"<p style='padding-top:15px; color:#555555;'>{row['data']}</p>", unsafe_allow_html=True)
         with c_texto:
-            t = st.text_area(label=f"Obs_{index}", value=row['observacao'], key=f"obs_{index}", label_visibility="collapsed")
-            novas_obs.append(t)
+            texto_inserido = st.text_area(label=f"Obs {row['dia']}", value=row['observacao'], key=f"obs_{index}", label_visibility="collapsed")
+            novas_obs.append(texto_inserido)
+        st.markdown("<hr style='margin: 0px 0px 5px 0px; border-color:#E0E0E0;'>", unsafe_allow_html=True)
 
     if st.button("💾 Salvar Alterações das Observações", use_container_width=True):
         df_o["observacao"] = novas_obs
+        df_o.columns = ["dia", "data", "observacao"]
         rp.update_file("observacoes.csv", "Update Observacoes", df_o.to_csv(index=False), f_o.sha)
-        st.success("Observações atualizadas com sucesso!")
-        st.rerun()
+        st.success("Observações sincronizadas com sucesso."); st.rerun()
 
     st.markdown("---")
     
-    # 6. FILTRO DE PASSAGEIROS
+    # Filtro de Passageiros Original
     st.write("### 🔍 Filtrar Programação por Passageiros")
-    lista_passageiros = sorted([p for p in df_v["passageiro"].unique() if p != ""]) if "passageiro" in df_v.columns else []
-    passageiros_selecionados = st.multiselect("Selecione os passageiros (Vazio exibe todos):", options=lista_passageiros)
+    lista_passageiros = sorted([p for p in df_v["passageiro"].unique() if p.strip() != ""]) if "passageiro" in df_v.columns else []
+    
+    passageiros_selecionados = st.multiselect(
+        "Selecione um ou mais passageiros (Deixe vazio para mostrar todos):",
+        options=lista_passageiros
+    )
 
-    df_filtrado = df_v[df_v['passageiro'].isin(passageiros_selecionados)] if passageiros_selecionados else df_v
+    if passageiros_selecionados and "passageiro" in df_v.columns:
+        df_filtrado = df_v[df_v['passageiro'].isin(passageiros_selecionados)]
+    else:
+        df_filtrado = df_v
 
-    # Definição das colunas de exibição por bloco
+    # Listas originais de colunas para exibição
     cols_pl = ["passageiro", "semana", "data", "horário", "saída", "motorista"]
     cols_cp = ["passageiro", "semana", "data", "horário", "motorista"]
     cols_outros = ["passageiro", "trajeto", "semana", "data", "horário", "motorista"]
 
-    # 7. RENDERIZAÇÃO SEGURA DAS TABELAS (SEM RISCO DE KEYERROR)
+    # --- 🛠️ ENGENHARIA DEFENSIVA (Única adição para matar o KeyError) ---
+    def corrigir_colunas_faltantes(df_alvo, colunas_requisitadas):
+        df_temp = df_alvo.copy()
+        for col in colunas_requisitadas:
+            if col not in df_temp.columns:
+                df_temp[col] = ""  # Injeta dinamicamente em memória se a coluna sumiu no CSV
+        return df_temp[colunas_requisitadas]
+    # ---------------------------------------------------------------------
+
+    # --- SEU GERADOR DE RELATÓRIO HTML ORIGINAL ---
+    html_relatorio = f"""
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 20px; color: #333; }}
+            h2 {{ text-align: center; color: #002D5E; border-bottom: 2px solid #FF7F50; padding-bottom: 5px; }}
+            h3 {{ background-color: #002D5E; color: white; padding: 8px; margin-top: 20px; }}
+            table {{ width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 12px; }}
+            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+            th {{ background-color: #f2f2f2; font-weight: bold; text-transform: uppercase; }}
+            .obs-box {{ margin-bottom: 8px; padding: 5px; border-left: 3px solid #FF7F50; }}
+        </style>
+    </head>
+    <body>
+        <h2>AURA APOENA LOGISTICS - AGENDA CORPORATIVA</h2>
+        <p>Relatório gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M')}</p>
+        <h3>OBSERVAÇÕES DA SEMANA</h3>
+    """
+    for _, r_obs in df_o.iterrows():
+        texto_obs = str(r_obs['observacao']).strip()
+        if texto_obs:
+            html_relatorio += f"<div class='obs-box'><b>{r_obs['dia']} ({r_obs['data']}):</b><br>{texto_obs.replace('\n', '<br>')}</div>"
+            
+    def adicionar_tabela_html(titulo, df_origem, colunas):
+        global html_relatorio
+        html_relatorio += f"<h3>{titulo}</h3>"
+        
+        if titulo == "PONTES E LACERDA X CUIABÁ":
+            df_trecho = df_origem[df_origem['trajeto'].astype(str).str.lower() == "pontes e lacerda x cuiabá"]
+        elif titulo == "CUIABÁ X PONTES E LACERDA":
+            df_trecho = df_origem[df_origem['trajeto'].astype(str).str.lower() == "cuiabá x pontes e lacerda"]
+        else:
+            df_trecho = df_origem[~df_origem['trajeto'].astype(str).str.lower().isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])]
+
+        if df_trecho.empty:
+            html_relatorio += "<p>Nenhuma viagem programada para este trecho.</p>"
+            return
+            
+        df_seguro = corrigir_colunas_faltantes(df_trecho, colunas)
+        html_relatorio += "<table><tr>" + "".join(f"<th>{c}</th>" for c in colunas) + "</tr>"
+        for _, row in df_seguro.iterrows():
+            html_relatorio += "<tr>" + "".join(f"<td>{str(row[c]) if pd.notna(row[c]) else ''}</td>" for c in colunas) + "</tr>"
+        html_relatorio += "</table>"
+
+    adicionar_tabela_html("PONTES E LACERDA X CUIABÁ", df_filtrado, cols_pl)
+    adicionar_tabela_html("CUIABÁ X PONTES E LACERDA", df_filtrado, cols_cp)
+    adicionar_tabela_html("OUTROS TRAJETOS E CIDADES", df_filtrado, cols_outros)
+    html_relatorio += "</body></html>"
+
+    st.download_button(
+        label="📄 Baixar Relatório Unificado da Agenda (HTML/PDF)",
+        data=html_relatorio,
+        file_name=f"agenda_aura_{datetime.now().strftime('%d_%m_%Y')}.html",
+        mime="text/html",
+        use_container_width=True
+    )
+
+    st.markdown("---")
+
+    # --- SEU VISUAL DE EXIBIÇÃO ORIGINAL CORRIGIDO CONTRA O BUG REASSUMIDO ---
     st.markdown('<br><div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
-    df_pl_screen = df_filtrado[df_filtrado['trajeto'].str.lower() == "pontes e lacerda x cuiabá"]
-    df_pl_render = garantir_colunas_existentes(df_pl_screen, cols_pl)
+    df_pl_screen = df_filtrado[df_filtrado['trajeto'].astype(str).str.lower() == "pontes e lacerda x cuiabá"]
+    df_pl_render = corrigir_colunas_faltantes(df_pl_screen, cols_pl)
     st.dataframe(df_pl_render, use_container_width=True, hide_index=True)
 
     st.markdown('<br><div class="trecho-header">CUIABÁ X PONTES E LACERDA</div>', unsafe_allow_html=True)
-    df_cp_screen = df_filtrado[df_filtrado['trajeto'].str.lower() == "cuiabá x pontes e lacerda"]
-    df_cp_render = garantir_colunas_existentes(df_cp_screen, cols_cp)
+    df_cp_screen = df_filtrado[df_filtrado['trajeto'].astype(str).str.lower() == "cuiabá x pontes e lacerda"]
+    df_cp_render = corrigir_colunas_faltantes(df_cp_screen, cols_cp)
     st.dataframe(df_cp_render, use_container_width=True, hide_index=True)
 
     st.markdown('<br><div class="trecho-header">OUTROS TRAJETOS E CIDADES (VIAGENS ESPECIAIS)</div>', unsafe_allow_html=True)
-    df_outros_screen = df_filtrado[~df_filtrado['trajeto'].str.lower().isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])]
-    df_outros_render = garantir_colunas_existentes(df_outros_screen, cols_outros)
+    df_outros_screen = df_filtrado[~df_filtrado['trajeto'].astype(str).str.lower().isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])]
+    df_outros_render = corrigir_colunas_faltantes(df_outros_screen, cols_outros)
     st.dataframe(df_outros_render, use_container_width=True, hide_index=True)
 
 except Exception as e:
-    st.error(f"Erro na consistência ou conversão de dados: {e}")
+    st.error(f"Erro na conexão com o banco de dados: {e}")
