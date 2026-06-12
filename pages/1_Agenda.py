@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from github import Github, Auth
 import io
+from datetime import datetime
 
 if 'logado' not in st.session_state or not st.session_state['logado']:
     st.session_state['logado'] = False
@@ -13,9 +14,24 @@ st.markdown("""
 <style>
     .stApp { background-color: #F0F8FF !important; }
     .agenda-header { background-color: #FF7F50 !important; color: white !important; padding: 10px; text-align: center; font-weight: bold; border-radius: 8px; margin-bottom: 15px; }
-    .trecho-header { background-color: #002D5E !important; color: white !important; padding: 8px 12px; font-weight: bold; border-radius: 4px; margin-top: 15px; }
+    .trecho-header { background-color: #002D5E !important; color: white !important; padding: 8px 12px; font-weight: bold; border-radius: 4px; margin-top: 15px; margin-bottom: 5px; }
+    div[data-testid="stTextArea"] textarea { background-color: #FFFFFF !important; color: #000000 !important; font-size: 14px !important; }
+    .obs-container { background-color: #FFFFFF; padding: 10px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid #FF7F50; }
 </style>
 """, unsafe_allow_html=True)
+
+def ajustar_data_br(txt):
+    if not txt or pd.isna(txt) or str(txt).strip() == "" or str(txt).lower() == "nan": return ""
+    t = str(txt).strip().split(" ")[0]
+    try:
+        if "-" in t: return datetime.strptime(t, "%Y-%m-%d").strftime("%d/%m/%Y")
+        p = t.split("/")
+        if len(p) == 2: return datetime.strptime(f"{t}/{datetime.now().year}", "%d/%m/%Y").strftime("%d/%m/%Y")
+        if len(p) == 3:
+            if len(p[2]) == 2: p[2] = "20" + p[2]
+            return datetime.strptime("/".join(p), "%d/%m/%Y").strftime("%d/%m/%Y")
+    except: return t
+    return t
 
 try:
     tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
@@ -23,13 +39,22 @@ try:
     df_v = pd.read_csv(io.StringIO(rp.get_contents("dados_logistica.csv").decoded_content.decode()))
     df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_content.decode()))
 
+    df_v.columns = df_v.columns.str.strip().str.lower()
+    df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+
     st.markdown('<div class="agenda-header">OBSERVAÇÕES DA SEMANA</div>', unsafe_allow_html=True)
     novas_obs = []
+    
     for idx, row in df_o.iterrows():
-        c1, c2, c3 = st.columns([1.5, 1, 6.5])
-        c1.markdown(f"<p style='padding-top:15px; font-weight:bold;'>{row.get('dia', row.get('Dia', ''))}</p>", unsafe_allow_html=True)
-        c2.markdown(f"<p style='padding-top:15px; color:#555555;'>{row.get('data', row.get('Data', ''))}</p>", unsafe_allow_html=True)
-        novas_obs.append(c3.text_area(label=f"O_{idx}", value=str(row.get('observacao', row.get('Observacao', ''))), key=f"obs_{idx}", label_visibility="collapsed"))
+        v_data = ajustar_data_br(row.get('data', ''))
+        v_dia = str(row.get('dia', '')).strip()
+        
+        st.markdown(f"""
+        <div class="obs-container">
+            <strong>{v_dia}</strong> <span style="color:#666; margin-left:10px;">{v_data}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        novas_obs.append(st.text_area(label=f"O_{idx}", value=str(row.get('observacao', '')), key=f"obs_{idx}", label_visibility="collapsed"))
 
     if st.button("💾 Salvar Alterações das Observações", width='stretch'):
         df_o["observacao"] = novas_obs
@@ -37,27 +62,40 @@ try:
         st.success("Salvo!"); st.rerun()
 
     st.markdown("---")
-    
-    # Encontra a coluna de trajeto e passageiro indepedente de maiúscula/minúscula
-    col_t = next((c for c in df_v.columns if str(c).strip().lower() == "trajeto"), "trajeto")
-    col_p = next((c for c in df_v.columns if str(c).strip().lower() == "passageiro"), "passageiro")
+    lista_p = sorted([p for p in df_v["passageiro"].unique() if str(p).strip() != ""]) if "passageiro" in df_v.columns else []
+    p_sel = st.multiselect("Filtrar por Passageiro:", options=lista_p)
+    df_f = df_v[df_v['passageiro'].isin(p_sel)] if p_sel else df_v
 
-    p_sel = st.multiselect("Filtrar por Passageiro:", options=sorted(list(df_v[col_p].dropna().unique())))
-    df_f = df_v[df_v[col_p].isin(p_sel)] if p_sel else df_v
+    # Listagem de colunas originais divididas por despesa específica de cada trecho
+    cols_pl = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "data do voo", "hotel em cuiabá", "motorista"]
+    cols_cp = ["passageiro", "semana", "data", "horário", "cia/nº voo", "horário do voo", "hotel cuiabá", "hospedagem . lacerda", "motorista"]
+    cols_out = ["passageiro", "trajeto", "semana", "data", "horário", "cia/nº voo", "horário do voo", "motorista"]
 
-    # Filtros baseados puramente no texto da planilha
-    df_pl = df_f[df_f[col_t].astype(str).str.strip().str.lower() == "pontes e lacerda x cuiabá"]
-    df_cp = df_f[df_f[col_t].astype(str).str.strip().str.lower() == "cuiabá x pontes e lacerda"]
-    df_out = df_f[~df_f[col_t].astype(str).str.strip().str.lower().isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])]
+    for c in list(set(cols_pl + cols_cp + cols_out)):
+        if c not in df_f.columns: df_f[c] = ""
+        else: df_f[c] = df_f[c].fillna("").astype(str).str.strip()
+
+    for c in df_f.columns:
+        if "data" in c: df_f[c] = df_f[c].apply(ajustar_data_br)
+
+    df_f["trajeto"] = df_f["trajeto"].str.lower()
+
+    df_pl_r = df_f[df_f['trajeto'] == "pontes e lacerda x cuiabá"][cols_pl]
+    df_cp_r = df_f[df_f['trajeto'] == "cuiabá x pontes e lacerda"][cols_cp]
+    df_out_r = df_f[~df_f['trajeto'].isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])][cols_out]
+
+    # 📄 SEU BOTÃO DE SALVAR EM PDF/HTML DE VOLTA
+    html_res = f"<html><body><h2>AURA LOGISTICS</h2><h3>PONTES E LACERDA X CUIABÁ</h3>{df_pl_r.to_html(index=False, border=1)}<h3>CUIABÁ X PONTES E LACERDA</h3>{df_cp_r.to_html(index=False, border=1)}</body></html>"
+    st.download_button(label="📄 Baixar Relatório da Agenda (HTML/PDF)", data=html_res, file_name="agenda.html", mime="text/html", width='stretch')
 
     st.markdown('<div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
-    st.dataframe(df_pl.dropna(how='all', axis=1), width='stretch', hide_index=True)
+    st.dataframe(df_pl_r, width='stretch', hide_index=True)
 
     st.markdown('<div class="trecho-header">CUIABÁ X PONTES E LACERDA</div>', unsafe_allow_html=True)
-    st.dataframe(df_cp.dropna(how='all', axis=1), width='stretch', hide_index=True)
+    st.dataframe(df_cp_r, width='stretch', hide_index=True)
 
     st.markdown('<div class="trecho-header">OUTROS TRAJETOS E CIDADES (VIAGENS ESPECIAIS)</div>', unsafe_allow_html=True)
-    st.dataframe(df_out.dropna(how='all', axis=1), width='stretch', hide_index=True)
+    st.dataframe(df_out_r, width='stretch', hide_index=True)
 
 except Exception as e:
     st.error(f"Erro no banco de dados: {e}")
