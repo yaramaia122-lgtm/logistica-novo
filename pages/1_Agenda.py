@@ -28,12 +28,12 @@ try:
     st.markdown('<div class="agenda-header">Observações</div>', unsafe_allow_html=True)
     for c in ["dia", "data", "observacao"]: df_o[c] = df_o[c].fillna("").astype(str).str.strip() if c in df_o.columns else ""
 
-    # AreaColumn ativada para Alt+Enter e row_height aumentada para dar espaço aos dois motoristas
+    # 🛡️ CORREÇÃO AQUI: Voltou para TextColumn para ser compatível com seu app, mas a tabela continua grande
     df_o_edit = st.data_editor(df_o[["dia", "data", "observacao"]], column_config={
         "dia": st.column_config.TextColumn("Dia da Semana", disabled=True),
         "data": st.column_config.TextColumn("Data", disabled=True),
-        "observacao": st.column_config.AreaColumn("Observação", width="large")
-    }, hide_index=True, width='stretch', row_height=100, key="ed_obs_v10")
+        "observacao": st.column_config.TextColumn("Observação", width="large")
+    }, hide_index=True, width='stretch', row_height=100, key="ed_obs_v11")
 
     if st.button("💾 Salvar Alterações das Observações", width='stretch'):
         df_o["observacao"] = df_o_edit["observacao"]
@@ -46,38 +46,4 @@ try:
     df_f = df_v[df_v['passageiro'].isin(p_sel)] if p_sel else df_v
 
     c_pl = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "data do voo", "hotel em cuiabá", "motorista"]
-    c_cp = ["passageiro", "semana", "data", "horário", "cia/nº voo", "horário do voo", "hotel cuiabá", "semana.1", "data.1", "horário.1", "hospedagem . lacerda", "motorista"]
-    c_out = ["passageiro", "trajeto", "semana", "data", "horário", "cia/nº voo", "horário do voo", "motorista"]
-
-    for c in list(set(c_pl + c_cp + c_out)): df_f[c] = df_f[c].fillna("").astype(str).str.strip() if c in df_f.columns else ""
-    df_f["trajeto"] = df_f["trajeto"].str.lower()
-    
-    df_pl_r = df_f[df_f['trajeto'] == "pontes e lacerda x cuiabá"][c_pl]
-    df_cp_r = df_f[df_f['trajeto'] == "cuiabá x pontes e lacerda"][c_cp]
-    df_out_r = df_f[~df_f['trajeto'].isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])][c_out]
-
-    # Carimbo com o fuso horário oficial de Cuiabá/MT
-    dt_cuiaba = datetime.now(zoneinfo.ZoneInfo("America/Cuiaba")).strftime('%d/%m/%Y às %H:%M')
-    df_o_html = df_o_edit.copy()
-    df_o_html["observacao"] = df_o_html["observacao"].str.replace("\n", "<br>")
-
-    style_tag = "<style>body{font-family:Arial;margin:10px;font-size:10px;} .meta-info{font-size:9px;color:#555;text-align:right;margin-bottom:10px;} h2{background:#FF7F50;color:white;padding:5px;text-align:center;margin-bottom:5px;} h3{background:#002D5E;color:white;padding:4px;margin-top:10px;} table{width:100%;border-collapse:collapse;margin-bottom:10px;} th,td{border:1px solid #ddd;padding:4px;text-align:left;vertical-align:top;} th{background:#f2f2f2;}</style>"
-    html_out = f"<html><head><meta charset='utf-8'>{style_tag}</head><body><div class='meta-info'>Relatório emitido em: {dt_cuiaba} (Horário de Cuiabá)</div><h2>AURA LOGISTICS - AGENDA</h2>"
-    html_out += "<h3>OBSERVAÇÕES DA SEMANA</h3>" + df_o_html.to_html(index=False, escape=False)
-    html_out += "<h3>PONTES E LACERDA X CUIABÁ</h3>" + df_pl_r.to_html(index=False)
-    html_out += "<h3>CUIABÁ X PONTES E LACERDA</h3>" + df_cp_r.to_html(index=False)
-    html_out += "</body></html>"
-    
-    st.download_button(label="📄 Baixar Relatório Otimizado (HTML/PDF 1 Página)", data=html_out, file_name="agenda_1_pagina.html", mime="text/html", width='stretch')
-
-    st.markdown('<div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
-    st.dataframe(df_pl_r, width='stretch', hide_index=True)
-
-    st.markdown('<div class="trecho-header">CUIABÁ X PONTES E LACERDA</div>', unsafe_allow_html=True)
-    st.dataframe(df_cp_r, width='stretch', hide_index=True)
-
-    st.markdown('<div class="trecho-header">OUTROS TRAJETOS E CIDADES (VIAGENS ESPECIAIS)</div>', unsafe_allow_html=True)
-    st.dataframe(df_out_r, width='stretch', hide_index=True)
-
-except Exception as e:
-    st.error(f"Erro no banco de dados: {e}")
+    c_cp =
