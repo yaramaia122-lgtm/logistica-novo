@@ -21,13 +21,12 @@ try:
     df_v = pd.read_csv(io.StringIO(rp.get_contents("dados_logistica.csv").decoded_content.decode()))
     df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_content.decode()))
 
-    # Ajuste padrão apenas para as observações
     df_o.columns = df_o.columns.str.strip().str.lower()
     df_o = df_o.loc[:, ~df_o.columns.duplicated()]
     for c in ["dia", "data", "observacao"]: df_o[c] = df_o[c].fillna("").astype(str).str.strip() if c in df_o.columns else ""
 
     st.markdown('<div class="agenda-header">Observações</div>', unsafe_allow_html=True)
-    df_o_edit = st.data_editor(df_o[["dia", "data", "observacao"]], column_config={"dia": st.column_config.TextColumn("Dia da Semana", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Observação", width="large")}, hide_index=True, width='stretch', row_height=100, key="ed_obs_v14")
+    df_o_edit = st.data_editor(df_o[["dia", "data", "observacao"]], column_config={"dia": st.column_config.TextColumn("Dia da Semana", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Observação", width="large")}, hide_index=True, width='stretch', row_height=100, key="ed_obs_v15")
 
     if st.button("💾 Salvar Alterações das Observações", width='stretch'):
         df_o["observacao"] = df_o_edit["observacao"]
@@ -36,31 +35,31 @@ try:
 
     st.markdown("---")
     
-    # Padronização temporária para o filtro de passageiros funcionar sem alterar o arquivo original
     df_v.columns = df_v.columns.str.strip()
+    # 🛡️ TRAVA CRÍTICA CONTRA DUPLICADOS: Elimina qualquer coluna repetida vinda do banco de dados
+    df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+    
     lista_p = sorted([p for p in df_v["passageiro"].unique() if str(p).strip() != ""]) if "passageiro" in df_v.columns else []
     p_sel = st.multiselect("Filtrar por Passageiro:", options=lista_p)
     df_f = df_v[df_v['passageiro'].isin(p_sel)] if p_sel else df_v
 
-    # 🛡️ DEFINIÇÃO RIGOROSA DAS COLUNAS REAIS (Sem nenhuma coluna de custo ou vazia)
+    # Listas originais limpas e mapeadas
     c_pl = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "data do voo", "hotel em cuiabá", "motorista"]
     c_cp = ["passageiro", "semana", "data", "horário", "cia/nº voo", "horário do voo", "hotel cuiabá", "semana.1", "data.1", "horário.1", "hospedagem . lacerda", "motorista"]
     c_out = ["passageiro", "trajeto", "semana", "data", "horário", "cia/nº voo", "horário do voo", "motorista"]
 
-    # Força a conversão para minúsculas apenas na validação do trajeto para evitar erros de digitação
-    df_f_Val = df_f.copy()
-    df_f_Val.columns = df_f_Val.columns.str.strip().str.lower()
-    t_str = df_f_Val['trajeto'].fillna("").astype(str).str.strip()
-
-    # Criação das tabelas finais com mapeamento seguro de colunas existentes
     df_f_limpo = df_f.fillna("").astype(str)
     df_f_limpo.columns = df_f_limpo.columns.str.strip().str.lower()
+    # Garante que as colunas formatadas também fiquem livres de duplicados internos
+    df_f_limpo = df_f_limpo.loc[:, ~df_f_limpo.columns.duplicated()]
 
+    t_str = df_f_limpo['trajeto'].fillna("").astype(str).str.strip()
+
+    # Filtros por trecho aplicando listas limpas sem risco de colunas clonadas
     df_pl_r = df_f_limpo[t_str == "pontes e lacerda x cuiabá"][[c for c in c_pl if c in df_f_limpo.columns]]
     df_cp_r = df_f_limpo[t_str == "cuiabá x pontes e lacerda"][[c for c in c_cp if c in df_f_limpo.columns]]
     df_out_r = df_f_limpo[(t_str != "pontes e lacerda x cuiabá") & (t_str != "cuiabá x pontes e lacerda")][[c for c in c_out if c in df_f_limpo.columns]]
 
-    # Carimbo de data/hora oficial de Cuiabá para o Relatório
     dt_c = datetime.now(zoneinfo.ZoneInfo("America/Cuiaba")).strftime('%d/%m/%Y às %H:%M')
     df_o_html = df_o_edit.copy()
     df_o_html["observacao"] = df_o_html["observacao"].astype(str).str.replace("\n", "<br>")
