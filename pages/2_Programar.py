@@ -10,7 +10,7 @@ if 'logado' not in st.session_state or not st.session_state['logado']:
 
 st.set_page_config(page_title="Programar - AURA", layout="wide")
 
-st.title("📝 Programar Nova Viagem de Logística")
+st.title("Programar Nova Viagem de Logística")
 
 dias_traduzidos = {
     0: "Segunda-Feira", 1: "Terça-Feira", 2: "Quarta-Feira",
@@ -27,18 +27,18 @@ with st.form("form_logistica", clear_on_submit=True):
     saida_local = st.text_input("Local de Saída:")
     
     st.markdown("---")
-    st.write("### ✈️ Informações de Voo")
+    st.write("### Informações de Voo")
     cia_voo = st.text_input("Cia / Nº do Voo:")
     horario_voo = st.text_input("Horário do Voo:")
     data_voo = st.date_input("Data do Voo:", value=None)
     
     st.markdown("---")
-    st.write("### 💰 Lançamento de Despesas Específicas da Viagem")
+    st.write("### Lançamento de Despesas Específicas da Viagem")
     hotel_cuiaba = st.text_input("Valor/Despesa Hotel em Cuiabá (R$):")
     hospedagem_lacerda = st.text_input("Valor/Despesa Hospedagem em P. Lacerda (R$):")
     motorista = st.text_input("Nome do Motorista Designado:")
     
-    enviar = st.form_submit_button("💾 Gravar e Sincronizar Programação", width='stretch')
+    enviar = st.form_submit_button("Gravar e Sincronizar Programação", width='stretch')
 
 if enviar:
     if not passageiro.strip():
