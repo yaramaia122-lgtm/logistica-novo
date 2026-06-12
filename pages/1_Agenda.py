@@ -9,7 +9,6 @@ if 'logado' not in st.session_state or not st.session_state['logado']:
     st.session_state['logado'] = False; st.switch_page("main.py")
 
 st.set_page_config(page_title="Agenda - AURA", layout="wide")
-
 st.markdown("""<style>
     .stApp { background-color: #F0F8FF !important; }
     .agenda-header { background-color: #FF7F50 !important; color: white !important; padding: 10px; text-align: center; font-weight: bold; border-radius: 8px; margin-bottom: 15px; }
@@ -26,14 +25,7 @@ try:
     df_v, df_o = df_v.loc[:, ~df_v.columns.duplicated()], df_o.loc[:, ~df_o.columns.duplicated()]
 
     st.markdown('<div class="agenda-header">Observações</div>', unsafe_allow_html=True)
-    for c in ["dia", "data", "observacao"]: df_o[c] = df_o[c].fillna("").astype(str).str.strip() if c in df_o.columns else ""
-
-    # 🛡️ CORREÇÃO AQUI: Voltou para TextColumn para ser compatível com seu app, mas a tabela continua grande
-    df_o_edit = st.data_editor(df_o[["dia", "data", "observacao"]], column_config={
-        "dia": st.column_config.TextColumn("Dia da Semana", disabled=True),
-        "data": st.column_config.TextColumn("Data", disabled=True),
-        "observacao": st.column_config.TextColumn("Observação", width="large")
-    }, hide_index=True, width='stretch', row_height=100, key="ed_obs_v11")
+    df_o_edit = st.data_editor(df_o[["dia", "data", "observacao"]], column_config={"dia": st.column_config.TextColumn("Dia da Semana", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Observação", width="large")}, hide_index=True, width='stretch', row_height=100, key="ed_obs_v12")
 
     if st.button("💾 Salvar Alterações das Observações", width='stretch'):
         df_o["observacao"] = df_o_edit["observacao"]
@@ -41,9 +33,13 @@ try:
         st.success("Salvo!"); st.rerun()
 
     st.markdown("---")
-    lista_p = sorted([p for p in df_v["passageiro"].unique() if str(p).strip() != ""]) if "passageiro" in df_v.columns else []
-    p_sel = st.multiselect("Filtrar por Passageiro:", options=lista_p)
+    p_sel = st.multiselect("Filtrar por Passageiro:", options=sorted(list(df_v["passageiro"].dropna().unique())))
     df_f = df_v[df_v['passageiro'].isin(p_sel)] if p_sel else df_v
 
-    c_pl = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "data do voo", "hotel em cuiabá", "motorista"]
-    c_cp =
+    # 🛡️ REMOÇÃO AUTOMÁTICA DE CUSTOS: Filtra e oculta as colunas financeiras da tela dinamicamente
+    cols_visiveis = [c for c in df_f.columns if "r$" not in c and "custo" not in c and "trajeto" not in c]
+    df_f_limpo = df_f[cols_visiveis].fillna("").astype(str)
+
+    df_pl_r = df_f_limpo[df_f['trajeto'] == "pontes e lacerda x cuiabá"]
+    df_cp_r = df_f_limpo[df_f['trajeto'] == "cuiabá x pontes e lacerda"]
+    df_out_r = df_f_limpo[~df_f['trajeto'].isin(
