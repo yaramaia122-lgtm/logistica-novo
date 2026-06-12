@@ -13,7 +13,7 @@ st.markdown("""
 <style>
     .stApp { background-color: #F0F8FF !important; }
     .agenda-header { background-color: #FF7F50 !important; color: white !important; padding: 10px; text-align: center; font-weight: bold; border-radius: 8px; margin-bottom: 15px; }
-    .trecho-header { background-color: #002D5E !important; color: white !important; padding: 8px 12px; font-weight: bold; border-radius: 4px; margin-top: 15px; }
+    .trecho-header { background-color: #002D5E !important; color: white !important; padding: 6px 12px; font-weight: bold; border-radius: 4px; margin-top: 12px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -41,7 +41,7 @@ try:
             "data": st.column_config.TextColumn("Data", disabled=True),
             "observacao": st.column_config.TextColumn("Observação", width="large")
         },
-        hide_index=True, use_container_width=True, key="ed_obs_v3"
+        hide_index=True, use_container_width=True, key="ed_obs_v4"
     )
 
     if st.button("💾 Salvar Alterações das Observações", use_container_width=True):
@@ -54,27 +54,30 @@ try:
     p_sel = st.multiselect("Filtrar por Passageiro:", options=lista_p)
     df_f = df_v[df_v['passageiro'].isin(p_sel)] if p_sel else df_v
 
-    c_pl = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "data do voo", "hotel em cuiabá", "motorista"]
-    c_cp = ["passageiro", "semana", "data", "horário", "cia/nº voo", "horário do voo", "hotel cuiabá", "semana.1", "data.1", "horário.1", "motorista", "hospedagem . lacerda"]
-    c_out = ["passageiro", "trajeto", "semana", "data", "horário", "cia/nº voo", "horário do voo", "motorista"]
+    # Colunas completas incluindo o detalhamento fino de custos individuais por linha
+    c_pl = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "data do voo", "hotel em cuiabá", "hotel (r$)", "aéreo (r$)", "transfer (r$)", "outros (r$)", "motorista"]
+    c_cp = ["passageiro", "semana", "data", "horário", "cia/nº voo", "horário do voo", "hotel cuiabá", "semana.1", "data.1", "horário.1", "hospedagem . lacerda", "hotel (r$)", "aéreo (r$)", "transfer (r$)", "outros (r$)", "motorista"]
+    c_out = ["passageiro", "trajeto", "semana", "data", "horário", "cia/nº voo", "horário do voo", "hotel (r$)", "aéreo (r$)", "transfer (r$)", "outros (r$)", "motorista"]
 
     for c in list(set(c_pl + c_cp + c_out)):
         if c not in df_f.columns: df_f[c] = ""
         else: df_f[c] = df_f[c].fillna("").astype(str).str.strip()
 
-    df_pl_r = df_f[df_f['trajeto'].str.lower() == "pontes e lacerda x cuiabá"][c_pl]
-    df_cp_r = df_f[df_f['trajeto'].str.lower() == "cuiabá x pontes e lacerda"][c_cp]
-    df_out_r = df_f[~df_f['trajeto'].str.lower().isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])][c_out]
+    df_f["trajeto"] = df_f["trajeto"].str.lower()
+    df_pl_r = df_f[df_f['trajeto'] == "pontes e lacerda x cuiabá"][c_pl]
+    df_cp_r = df_f[df_f['trajeto'] == "cuiabá x pontes e lacerda"][c_cp]
+    df_out_r = df_f[~df_f['trajeto'].isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])][c_out]
 
-    # 📄 NOVO MOTOR DE EXPORTAÇÃO COM LAYOUT DESIGN PROFISSIONAL (CSS)
+    # 📄 CSS ULTRA-COMPACTO: Força todo o documento a reduzir fontes e margens para impressão em 1 página
     html_style = """
     <style>
-        body { font-family: Arial, sans-serif; margin: 30px; background-color: #F0F8FF; color: #333; }
-        .main-title { background-color: #FF7F50; color: white; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; border-radius: 8px; margin-bottom: 25px; }
-        .section-title { background-color: #002D5E; color: white; padding: 10px; font-size: 16px; font-weight: bold; border-radius: 4px; margin-top: 30px; margin-bottom: 15px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background-color: white; box-shadow: 0 2px 3px rgba(0,0,0,0.1); }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; }
-        th { background-color: #f2f2f2; font-weight: bold; color: #002D5E; }
+        @media print { @page { size: landscape; margin: 0.3cm; } body { margin: 0; padding: 0; } }
+        body { font-family: Arial, sans-serif; margin: 15px; background-color: #FFF; color: #333; font-size: 11px; }
+        .main-title { background-color: #FF7F50; color: white; padding: 6px; text-align: center; font-size: 16px; font-weight: bold; border-radius: 4px; margin-bottom: 10px; }
+        .section-title { background-color: #002D5E; color: white; padding: 4px 8px; font-size: 12px; font-weight: bold; border-radius: 4px; margin-top: 10px; margin-bottom: 6px; page-break-inside: avoid; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; page-break-inside: avoid; }
+        th, td { border: 1px solid #bbb; padding: 4px 6px; text-align: left; font-size: 10px; white-space: nowrap; }
+        th { background-color: #f2f2f2; color: #002D5E; }
         tr:nth-child(even) { background-color: #f9f9f9; }
     </style>
     """
@@ -83,27 +86,7 @@ try:
     <html>
     <head><meta charset='utf-8'>{html_style}</head>
     <body>
-        <div class='main-title'>AURA APOENA LOGISTICS - RELATÓRIO DA AGENDA</div>
+        <div class='main-title'>AURA APOENA LOGISTICS - AGENDA DA SEMANA</div>
         <div class='section-title'>OBSERVAÇÕES DA SEMANA</div>
         {df_o_edit.to_html(index=False)}
-        <div class='section-title'>PONTES E LACERDA X CUIABÁ</div>
-        {df_pl_r.to_html(index=False)}
-        <div class='section-title'>CUIABÁ X PONTES E LACERDA</div>
-        {df_cp_r.to_html(index=False)}
-    </body>
-    </html>
-    """
-    
-    st.download_button(label="📄 Baixar Relatório Formatado da Agenda (HTML)", data=html_export, file_name="agenda_aura.html", mime="text/html", use_container_width=True)
-
-    st.markdown('<div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
-    st.dataframe(df_pl_r, use_container_width=True, hide_index=True)
-
-    st.markdown('<div class="trecho-header">CUIABÁ X PONTES E LACERDA</div>', unsafe_allow_html=True)
-    st.dataframe(df_cp_r, use_container_width=True, hide_index=True)
-
-    st.markdown('<div class="trecho-header">OUTROS TRAJETOS E CIDADES (VIAGENS ESPECIAIS)</div>', unsafe_allow_html=True)
-    st.dataframe(df_out_r, use_container_width=True, hide_index=True)
-
-except Exception as e:
-    st.error(f"Erro no banco de dados: {e}")
+        <div class='section-title'>PONTES E LACERDA X C
