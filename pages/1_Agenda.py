@@ -23,21 +23,17 @@ try:
     df_v = pd.read_csv(io.StringIO(rp.get_contents("dados_logistica.csv").decoded_content.decode()))
     df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_content.decode()))
 
-    # Padroniza todas as colunas de ambos os arquivos para evitar o KeyError
     df_v.columns = df_v.columns.str.strip().str.lower()
     df_v = df_v.loc[:, ~df_v.columns.duplicated()]
-    
     df_o.columns = df_o.columns.str.strip().str.lower()
     df_o = df_o.loc[:, ~df_o.columns.duplicated()]
 
     st.markdown('<div class="agenda-header">Observações</div>', unsafe_allow_html=True)
     
-    # Garante os campos obrigatórios vazios se não existirem
     for col in ["dia", "data", "observacao"]:
         if col not in df_o.columns: df_o[col] = ""
         else: df_o[col] = df_o[col].fillna("").astype(str).str.strip()
 
-    # Exibe em formato de tabela editável idêntica à planilha do seu modelo (image_b2ba1b.png)
     df_o_edit = st.data_editor(
         df_o[["dia", "data", "observacao"]],
         column_config={
@@ -45,7 +41,7 @@ try:
             "data": st.column_config.TextColumn("Data", disabled=True),
             "observacao": st.column_config.TextColumn("Observação", width="large")
         },
-        hide_index=True, use_container_width=True, key="ed_obs_v2"
+        hide_index=True, use_container_width=True, key="ed_obs_v3"
     )
 
     if st.button("💾 Salvar Alterações das Observações", use_container_width=True):
@@ -70,9 +66,35 @@ try:
     df_cp_r = df_f[df_f['trajeto'].str.lower() == "cuiabá x pontes e lacerda"][c_cp]
     df_out_r = df_f[~df_f['trajeto'].str.lower().isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])][c_out]
 
-    # Botão de download estruturado de forma leve
-    html_data = "<h2>AURA LOGISTICS</h2>" + df_pl_r.to_html(index=False) + df_cp_r.to_html(index=False)
-    st.download_button(label="📄 Baixar Relatório da Agenda (HTML)", data=html_data, file_name="agenda.html", mime="text/html", use_container_width=True)
+    # 📄 NOVO MOTOR DE EXPORTAÇÃO COM LAYOUT DESIGN PROFISSIONAL (CSS)
+    html_style = """
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; background-color: #F0F8FF; color: #333; }
+        .main-title { background-color: #FF7F50; color: white; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; border-radius: 8px; margin-bottom: 25px; }
+        .section-title { background-color: #002D5E; color: white; padding: 10px; font-size: 16px; font-weight: bold; border-radius: 4px; margin-top: 30px; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background-color: white; box-shadow: 0 2px 3px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px; }
+        th { background-color: #f2f2f2; font-weight: bold; color: #002D5E; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+    """
+    
+    html_export = f"""
+    <html>
+    <head><meta charset='utf-8'>{html_style}</head>
+    <body>
+        <div class='main-title'>AURA APOENA LOGISTICS - RELATÓRIO DA AGENDA</div>
+        <div class='section-title'>OBSERVAÇÕES DA SEMANA</div>
+        {df_o_edit.to_html(index=False)}
+        <div class='section-title'>PONTES E LACERDA X CUIABÁ</div>
+        {df_pl_r.to_html(index=False)}
+        <div class='section-title'>CUIABÁ X PONTES E LACERDA</div>
+        {df_cp_r.to_html(index=False)}
+    </body>
+    </html>
+    """
+    
+    st.download_button(label="📄 Baixar Relatório Formatado da Agenda (HTML)", data=html_export, file_name="agenda_aura.html", mime="text/html", use_container_width=True)
 
     st.markdown('<div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
     st.dataframe(df_pl_r, use_container_width=True, hide_index=True)
