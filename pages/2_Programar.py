@@ -2,74 +2,84 @@ import streamlit as st
 import pandas as pd
 from github import Github, Auth
 import io
+from datetime import datetime
 
 if 'logado' not in st.session_state or not st.session_state['logado']:
     st.session_state['logado'] = False
     st.switch_page("main.py")
 
-st.set_page_config(page_title="Programar - AURA", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Programar - AURA", layout="wide")
 
-with st.sidebar:
-    st.write(f"Usuário ativo: **{st.session_state.get('user', 'Funcionário')}**")
-    if st.button("Sair do Sistema", use_container_width=True):
-        st.session_state['logado'] = False
-        st.session_state['user'] = None
-        st.switch_page("main.py")
+st.title("📝 Programar Nova Viagem de Logística")
 
-CC_LISTA = [
-    "210301 - Moagem", "210403 - Detox", "210801 - Laboratório", "211002 - Manutenção Mecânica Planta",
-    "210405 - Lixiviação / Cianetação", "210101 - Administração Planta", "211001 - Manutencao Eletrica Planta",
-    "211003 - Oficina Manutenção Planta", "210201 - Britagem Primária", "210604 - Fundição", "310101 - Almoxarifado",
-    "320401 - Controladoria e Contabilidade", "310701 - Serviços Gerais", "320601 - Celula de Gestao de Contratos",
-    "320101 - Suprimentos", "320502 - Tecnologia da Informação", "311202 - Care and Maintenance SF",
-    "330102 - Apoena Corporativo", "311203 - Care and Maintenance PPQ", "340103 - Jurídico",
-    "310801 - Segurança Patrimonial", "310301 - PCP", "320201 - Gerência Geral", "310508 - Comunidades",
-    "320303 - Trainee", "320301 - Recursos Humanos", "310902 - Campo", "310904 - Exploração EPP",
-    "121101 - Geologia Operacional - Mina Ernesto", "121102 - Planejamento e Topografia Operacional - Mina Ernes",
-    "151101 - Geologia Operacional - Mina Nosde", "151103 - Geotecnia - Nosde", "210502 - Barragem",
-    "151102 - Planejamento e Topografia Operacional - Mina Nosde", "310501 - Meio Ambiente",
-    "310503 - Segurança do Trabalho", "310502 - Saude", "150101 - Administração de Mina - Céu Aberto - Nosde",
-    "120101 - Administração de Mina - Céu Aberto - Ernesto"
-]
+# Dicionário de tradução para automação da semana
+dias_traduzidos = {
+    0: "Segunda-Feira", 1: "Terça-Feira", 2: "Quarta-Feira",
+    3: "Quinta-Feira", 4: "Sexta-Feira", 5: "Sábado", 6: "Domingo"
+}
 
-tk = st.secrets["GITHUB_TOKEN"]
-rp = Github(auth=Auth.Token(tk)).get_repo(st.secrets["GITHUB_REPO"])
-f_v = rp.get_contents("dados_logistica.csv")
-df_v = pd.read_csv(io.StringIO(f_v.decoded_content.decode()))
-
-with st.form("programar_viagem"):
-    c1, c2 = st.columns(2)
-    px = c1.text_input("Passageiro").upper()
-    mt = c1.selectbox("Motorista", ["Ilson", "Antonio", "Vagno", "Cido", "A definir", "Outro"])
-    tj_selecao = c1.selectbox("Trecho", ["Pontes e Lacerda x Cuiabá", "Cuiabá x Pontes e Lacerda", "Outras Cidades (Especificar abaixo)"])
-    tj_custom = c1.text_input("Se selecionou 'Outras Cidades', especifique o trajeto (Ex: Lacerda x Vila Bela):").strip()
-    cc = c1.selectbox("Centro de Custo", CC_LISTA)
+with st.form("form_logistica", clear_on_submit=True):
+    passageiro = st.text_input("Nome do Passageiro:")
+    trajeto = st.selectbox("Selecione o Trajeto:", ["Pontes e Lacerda x Cuiabá", "Cuiabá x Pontes e Lacerda", "Outros"])
+    trajeto_custom = st.text_input("Se escolheu 'Outros', digite o trajeto:") if trajeto == "Outros" else ""
     
-    dt = c2.date_input("Data")
-    sem = c2.selectbox("Dia da Semana", ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"])
-    hs = c2.text_input("Hora Saída")
-    ht = c2.text_input("Hotel/Destino Final")
-    vn = c1.text_input("Cia/nº voo (Se houver)")
-    vh = c2.text_input("Horário do Voo (Se houver)")
+    data_viagem = st.date_input("Data da Viagem:", datetime.now())
+    horario = st.text_input("Horário de Saída/Encontro (Ex: 08:00):")
+    saida_local = st.text_input("Local de Saída (Se aplicável):")
     
-    st.markdown("### Custos (Acesso Restrito)")
-    f1, f2, f3, f4 = st.columns(4)
-    c_h = f1.number_input("Custo Hotel", 0.0)
-    c_c = f2.number_input("Custo Combustível", 0.0)
-    c_a = f3.number_input("Custo Aéreo", 0.0)
-    c_o = f4.number_input("Outros Custos", 0.0)
+    st.markdown("---")
+    st.write("### ✈️ Informações Adicionais de Voo / Hospedagem")
+    cia_voo = st.text_input("Cia / Nº do Voo:")
+    horario_voo = st.text_input("Horário do Voo:")
+    data_voo = st.date_input("Data do Voo (Se diferente):", value=None, json_encoder=None)
     
-    if st.form_submit_button("CONFIRMAR E ENVIAR PARA AGENDA"):
-        trajeto_final = tj_custom if tj_selecao == "Outras Cidades (Especificar abaixo)" and tj_custom != "" else tj_selecao
-        total = c_h + c_c + c_a + c_o
-        nova = pd.DataFrame([{
-            "Passageiro": px, "Motorista": mt, "Trajeto": trajeto_final, "Centro_Custo": cc,
-            "semana": sem, "data": dt.strftime('%d/%m'), "horário": hs, "saída": ht,
-            "Cia/nº voo": vn, "Horário do Voo": vh, "Data do Voo": dt.strftime('%d/%m'),
-            "Hotel em Cuiabá": ht, "Hotel Cuiabá": ht, "semana_ret": sem, "data_ret": dt.strftime('%d/%m'),
-            "horário_ret": hs, "Hospedagem . Lacerda": ht,
-            "Hotel_V": c_h, "Comb_V": c_c, "Aereo_V": c_a, "Outros_V": c_o, "Total": total, "Status": "Confirmada"
-        }])
-        df_f = pd.concat([df_v, nova], ignore_index=True)
-        rp.update_file("dados_logistica.csv", "Add", df_f.to_csv(index=False), f_v.sha)
-        st.success("Logística integrada na Agenda com sucesso."); st.rerun()
+    hotel_cuiaba = st.text_input("Hotel em Cuiabá (Se aplicável):")
+    hospedagem_lacerda = st.text_input("Hospedagem em P. Lacerda (Se aplicável):")
+    motorista = st.text_input("Nome do Motorista Designado:")
+    
+    enviar = st.form_submit_button("💾 Gravar e Sincronizar Programação", use_container_width=True)
+
+if enviar:
+    if not passageiro.strip():
+        st.error("Por favor, preencha o nome do passageiro.")
+    else:
+        try:
+            tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
+            rp = Github(auth=Auth.Token(tk)).get_repo(repo)
+            
+            # Puxa o arquivo atual do GitHub
+            file_content = rp.get_contents("dados_logistica.csv")
+            df_atual = pd.read_csv(io.StringIO(file_content.decoded_content.decode()))
+            
+            # 🛡️ TRATAMENTO INTELIGENTE DA DATA E SEMANA (Sincronização Ativa)
+            trajeto_final = trajeto_custom.strip() if trajeto == "Outros" else trajeto
+            semana_calculada = dias_traduzidos[data_viagem.weekday()]
+            data_viagem_br = data_viagem.strftime('%d/%m/%Y')
+            data_voo_br = data_voo.strftime('%d/%m/%Y') if data_voo else ""
+            
+            # Montagem da nova linha alinhada rigorosamente em minúsculas
+            nova_viagem = {
+                "passageiro": passageiro.strip(),
+                "trajeto": trajeto_final.strip(),
+                "semana": semana_calculada,
+                "data": data_viagem_br,
+                "horário": horario.strip(),
+                "saída": saida_local.strip(),
+                "cia/nº voo": cia_voo.strip(),
+                "horário do voo": horario_voo.strip(),
+                "data do voo": data_voo_br,
+                "hotel em cuiabá": hotel_cuiaba.strip(),
+                "hotel cuiabá": hotel_cuiaba.strip(), # Compatibilidade dupla
+                "motorista": motorista.strip(),
+                "hospedagem . lacerda": hospedagem_lacerda.strip()
+            }
+            
+            df_nova = pd.DataFrame([nova_viagem])
+            df_final = pd.concat([df_atual, df_nova], ignore_index=True)
+            
+            # Devolve o arquivo atualizado e higienizado para o repositório
+            rp.update_file("dados_logistica.csv", "Nova viagem adicionada", df_final.to_csv(index=False), file_content.sha)
+            st.success(f"Sucesso! Viagem de {passageiro} programada para {semana_calculada} ({data_viagem_br}) gravada com êxito.")
+            
+        except Exception as e:
+            st.error(f"Erro ao salvar no banco de dados: {e}")
