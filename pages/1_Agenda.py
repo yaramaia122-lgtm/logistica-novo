@@ -34,6 +34,7 @@ try:
         if col not in df_o.columns: df_o[col] = ""
         else: df_o[col] = df_o[col].fillna("").astype(str).str.strip()
 
+    # 🛠️ AJUSTE AQUI: row_height=60 expande a altura das linhas para caber o texto dos dois motoristas
     df_o_edit = st.data_editor(
         df_o[["dia", "data", "observacao"]],
         column_config={
@@ -41,7 +42,7 @@ try:
             "data": st.column_config.TextColumn("Data", disabled=True),
             "observacao": st.column_config.TextColumn("Observação", width="large")
         },
-        hide_index=True, use_container_width=True, key="ed_obs_v6"
+        hide_index=True, use_container_width=True, row_height=60, key="ed_obs_v7"
     )
 
     if st.button("💾 Salvar Alterações das Observações", use_container_width=True):
@@ -54,24 +55,20 @@ try:
     p_sel = st.multiselect("Filtrar por Passageiro:", options=lista_p)
     df_f = df_v[df_v['passageiro'].isin(p_sel)] if p_sel else df_v
 
-    # Definição das colunas de logística pura (Os custos foram retirados daqui)
     c_pl = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "data do voo", "hotel em cuiabá", "motorista"]
     c_cp = ["passageiro", "semana", "data", "horário", "cia/nº voo", "horário do voo", "hotel cuiabá", "semana.1", "data.1", "horário.1", "hospedagem . lacerda", "motorista"]
     c_out = ["passageiro", "trajeto", "semana", "data", "horário", "cia/nº voo", "horário do voo", "motorista"]
 
-    # Força a criação das colunas caso não existam no CSV para evitar quebras
     for c in list(set(c_pl + c_cp + c_out)):
         if c not in df_f.columns: df_f[c] = ""
         else: df_f[c] = df_f[c].fillna("").astype(str).str.strip()
 
     df_f["trajeto"] = df_f["trajeto"].str.lower()
     
-    # 🛡️ FILTRAGEM DE ENGENHARIA CRÍTICA: Isola apenas as colunas permitidas para a tela e esconde os custos
     df_pl_r = df_f[df_f['trajeto'] == "pontes e lacerda x cuiabá"][c_pl]
     df_cp_r = df_f[df_f['trajeto'] == "cuiabá x pontes e lacerda"][c_cp]
     df_out_r = df_f[~df_f['trajeto'].isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])][c_out]
 
-    # Relatório de uma folha atualizado e sem custos
     style_tag = "<style>body{font-family:Arial;margin:10px;font-size:10px;} h2{background:#FF7F50;color:white;padding:5px;text-align:center;} h3{background:#002D5E;color:white;padding:4px;} table{width:100%;border-collapse:collapse;margin-bottom:10px;} th,td{border:1px solid #ddd;padding:4px;text-align:left;} th{background:#f2f2f2;}</style>"
     html_out = f"<html><head><meta charset='utf-8'>{style_tag}</head><body><h2>AURA LOGISTICS - AGENDA</h2>"
     html_out += "<h3>OBSERVAÇÕES DA SEMANA</h3>" + df_o_edit.to_html(index=False)
