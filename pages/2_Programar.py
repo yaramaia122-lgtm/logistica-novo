@@ -12,7 +12,6 @@ st.set_page_config(page_title="Programar - AURA", layout="wide")
 
 st.title("📝 Programar Nova Viagem de Logística")
 
-# Dicionário de tradução para automação da semana
 dias_traduzidos = {
     0: "Segunda-Feira", 1: "Terça-Feira", 2: "Quarta-Feira",
     3: "Quinta-Feira", 4: "Sexta-Feira", 5: "Sábado", 6: "Domingo"
@@ -31,13 +30,14 @@ with st.form("form_logistica", clear_on_submit=True):
     st.write("### ✈️ Informações Adicionais de Voo / Hospedagem")
     cia_voo = st.text_input("Cia / Nº do Voo:")
     horario_voo = st.text_input("Horário do Voo:")
-    data_voo = st.date_input("Data do Voo (Se diferente):", value=None, json_encoder=None)
+    # 🛡️ CORREÇÃO AQUI: Removido o argumento invisível 'json_encoder' que quebrava o app
+    data_voo = st.date_input("Data do Voo (Se diferente):", value=None)
     
     hotel_cuiaba = st.text_input("Hotel em Cuiabá (Se aplicável):")
     hospedagem_lacerda = st.text_input("Hospedagem em P. Lacerda (Se aplicável):")
     motorista = st.text_input("Nome do Motorista Designado:")
     
-    enviar = st.form_submit_button("💾 Gravar e Sincronizar Programação", use_container_width=True)
+    enviar = st.form_submit_button("💾 Gravar e Sincronizar Programação", width='stretch')
 
 if enviar:
     if not passageiro.strip():
@@ -47,17 +47,14 @@ if enviar:
             tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
             rp = Github(auth=Auth.Token(tk)).get_repo(repo)
             
-            # Puxa o arquivo atual do GitHub
             file_content = rp.get_contents("dados_logistica.csv")
             df_atual = pd.read_csv(io.StringIO(file_content.decoded_content.decode()))
             
-            # 🛡️ TRATAMENTO INTELIGENTE DA DATA E SEMANA (Sincronização Ativa)
             trajeto_final = trajeto_custom.strip() if trajeto == "Outros" else trajeto
             semana_calculada = dias_traduzidos[data_viagem.weekday()]
             data_viagem_br = data_viagem.strftime('%d/%m/%Y')
             data_voo_br = data_voo.strftime('%d/%m/%Y') if data_voo else ""
             
-            # Montagem da nova linha alinhada rigorosamente em minúsculas
             nova_viagem = {
                 "passageiro": passageiro.strip(),
                 "trajeto": trajeto_final.strip(),
@@ -69,7 +66,7 @@ if enviar:
                 "horário do voo": horario_voo.strip(),
                 "data do voo": data_voo_br,
                 "hotel em cuiabá": hotel_cuiaba.strip(),
-                "hotel cuiabá": hotel_cuiaba.strip(), # Compatibilidade dupla
+                "hotel cuiabá": hotel_cuiaba.strip(),
                 "motorista": motorista.strip(),
                 "hospedagem . lacerda": hospedagem_lacerda.strip()
             }
@@ -77,9 +74,8 @@ if enviar:
             df_nova = pd.DataFrame([nova_viagem])
             df_final = pd.concat([df_atual, df_nova], ignore_index=True)
             
-            # Devolve o arquivo atualizado e higienizado para o repositório
             rp.update_file("dados_logistica.csv", "Nova viagem adicionada", df_final.to_csv(index=False), file_content.sha)
-            st.success(f"Sucesso! Viagem de {passageiro} programada para {semana_calculada} ({data_viagem_br}) gravada com êxito.")
+            st.success(f"Sucesso! Registro de {passageiro} salvo.")
             
         except Exception as e:
             st.error(f"Erro ao salvar no banco de dados: {e}")
