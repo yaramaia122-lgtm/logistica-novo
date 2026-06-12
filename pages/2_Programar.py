@@ -23,21 +23,19 @@ with st.form("form_logistica", clear_on_submit=True):
     trajeto_custom = st.text_input("Se escolheu 'Outros', digite o trajeto:") if trajeto == "Outros" else ""
     
     data_viagem = st.date_input("Data da Viagem:", datetime.now())
-    horario = st.text_input("Horário de Saída/Encontro (Ex: 08:00):")
-    saida_local = st.text_input("Local de Saída (Se aplicável):")
+    horario = st.text_input("Horário de Saída/Encontro:")
+    saida_local = st.text_input("Local de Saída:")
     
     st.markdown("---")
-    st.write("### ✈️ Informações Adicionais de Voo / Hospedagem")
+    st.write("### ✈️ Informações de Voo")
     cia_voo = st.text_input("Cia / Nº do Voo:")
     horario_voo = st.text_input("Horário do Voo:")
-    data_voo = st.date_input("Data do Voo (Se diferente):", value=None)
-    
-    hotel_cuiaba = st.text_input("Hotel em Cuiabá (Se aplicável):")
-    hospedagem_lacerda = st.text_input("Hospedagem em P. Lacerda (Se aplicável):")
+    data_voo = st.date_input("Data do Voo:", value=None)
     
     st.markdown("---")
-    st.write("### 💰 Gestão e Operação")
-    custo = st.text_input("Custo da Operação (R$):")
+    st.write("### 💰 Lançamento de Despesas Específicas da Viagem")
+    hotel_cuiaba = st.text_input("Valor/Despesa Hotel em Cuiabá (R$):")
+    hospedagem_lacerda = st.text_input("Valor/Despesa Hospedagem em P. Lacerda (R$):")
     motorista = st.text_input("Nome do Motorista Designado:")
     
     enviar = st.form_submit_button("💾 Gravar e Sincronizar Programação", width='stretch')
@@ -55,23 +53,20 @@ if enviar:
             
             trajeto_final = trajeto_custom.strip() if trajeto == "Outros" else trajeto
             semana_calculada = dias_traduzidos[data_viagem.weekday()]
-            data_viagem_br = data_viagem.strftime('%d/%m/%Y')
-            data_voo_br = data_voo.strftime('%d/%m/%Y') if data_voo else ""
             
             nova_viagem = {
                 "passageiro": passageiro.strip(),
                 "trajeto": trajeto_final.strip(),
                 "semana": semana_calculada,
-                "data": data_viagem_br,
+                "data": data_viagem.strftime('%d/%m/%Y'),
                 "horário": horario.strip(),
                 "saída": saida_local.strip(),
                 "cia/nº voo": cia_voo.strip(),
                 "horário do voo": horario_voo.strip(),
-                "data do voo": data_voo_br,
+                "data do voo": data_voo.strftime('%d/%m/%Y') if data_voo else "",
                 "hotel em cuiabá": hotel_cuiaba.strip(),
                 "hotel cuiabá": hotel_cuiaba.strip(),
                 "hospedagem . lacerda": hospedagem_lacerda.strip(),
-                "custo": custo.strip(),
                 "motorista": motorista.strip()
             }
             
@@ -79,7 +74,7 @@ if enviar:
             df_final = pd.concat([df_atual, df_nova], ignore_index=True)
             
             rp.update_file("dados_logistica.csv", "Nova viagem adicionada", df_final.to_csv(index=False), file_content.sha)
-            st.success(f"Sucesso! Registro de {passageiro} salvo.")
+            st.success("Sucesso! Registro salvo.")
             
         except Exception as e:
             st.error(f"Erro ao salvar no banco de dados: {e}")
