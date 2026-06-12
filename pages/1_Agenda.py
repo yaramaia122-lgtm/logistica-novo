@@ -23,9 +23,21 @@ try:
     df_v = pd.read_csv(io.StringIO(rp.get_contents("dados_logistica.csv").decoded_content.decode()))
     df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_content.decode()))
 
+    # Padroniza todas as colunas de ambos os arquivos para evitar o KeyError
+    df_v.columns = df_v.columns.str.strip().str.lower()
+    df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+    
+    df_o.columns = df_o.columns.str.strip().str.lower()
+    df_o = df_o.loc[:, ~df_o.columns.duplicated()]
+
     st.markdown('<div class="agenda-header">Observações</div>', unsafe_allow_html=True)
     
-    # Exibe as observações exatamente como no modelo de planilha image_b2ba1b.png
+    # Garante os campos obrigatórios vazios se não existirem
+    for col in ["dia", "data", "observacao"]:
+        if col not in df_o.columns: df_o[col] = ""
+        else: df_o[col] = df_o[col].fillna("").astype(str).str.strip()
+
+    # Exibe em formato de tabela editável idêntica à planilha do seu modelo (image_b2ba1b.png)
     df_o_edit = st.data_editor(
         df_o[["dia", "data", "observacao"]],
         column_config={
@@ -33,22 +45,19 @@ try:
             "data": st.column_config.TextColumn("Data", disabled=True),
             "observacao": st.column_config.TextColumn("Observação", width="large")
         },
-        hide_index=True, use_container_width=True, key="ed_obs"
+        hide_index=True, use_container_width=True, key="ed_obs_v2"
     )
 
     if st.button("💾 Salvar Alterações das Observações", use_container_width=True):
         df_o["observacao"] = df_o_edit["observacao"]
         rp.update_file("observacoes.csv", "Update", df_o.to_csv(index=False), rp.get_contents("observacoes.csv").sha)
-        st.success("Salvo!"); st.rerun()
+        st.success("Salvo com sucesso!"); st.rerun()
 
     st.markdown("---")
-    df_v.columns = df_v.columns.str.strip().str.lower()
-    df_v = df_v.loc[:, ~df_v.columns.duplicated()]
-    
-    p_sel = st.multiselect("Filtrar por Passageiro:", options=sorted(list(df_v["passageiro"].dropna().unique())))
+    lista_p = sorted([p for p in df_v["passageiro"].unique() if str(p).strip() != ""]) if "passageiro" in df_v.columns else []
+    p_sel = st.multiselect("Filtrar por Passageiro:", options=lista_p)
     df_f = df_v[df_v['passageiro'].isin(p_sel)] if p_sel else df_v
 
-    # Suas colunas de controle por trecho de volta
     c_pl = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "data do voo", "hotel em cuiabá", "motorista"]
     c_cp = ["passageiro", "semana", "data", "horário", "cia/nº voo", "horário do voo", "hotel cuiabá", "semana.1", "data.1", "horário.1", "motorista", "hospedagem . lacerda"]
     c_out = ["passageiro", "trajeto", "semana", "data", "horário", "cia/nº voo", "horário do voo", "motorista"]
@@ -61,7 +70,7 @@ try:
     df_cp_r = df_f[df_f['trajeto'].str.lower() == "cuiabá x pontes e lacerda"][c_cp]
     df_out_r = df_f[~df_f['trajeto'].str.lower().isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])][c_out]
 
-    # Botão de Relatório HTML simples e leve para não estourar a sincronização
+    # Botão de download estruturado de forma leve
     html_data = "<h2>AURA LOGISTICS</h2>" + df_pl_r.to_html(index=False) + df_cp_r.to_html(index=False)
     st.download_button(label="📄 Baixar Relatório da Agenda (HTML)", data=html_data, file_name="agenda.html", mime="text/html", use_container_width=True)
 
@@ -75,4 +84,4 @@ try:
     st.dataframe(df_out_r, use_container_width=True, hide_index=True)
 
 except Exception as e:
-    st.error(f"Erro: {e}")
+    st.error(f"Erro no banco de dados: {e}")
