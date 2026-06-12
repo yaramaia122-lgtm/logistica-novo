@@ -20,13 +20,8 @@ st.markdown("""
 try:
     tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
     rp = Github(auth=Auth.Token(tk)).get_repo(repo)
-
-    # O truque: dayfirst=True força o Pandas a ler as datas no padrão DD/MM/AAAA automaticamente
-    df_v = pd.read_csv(io.StringIO(rp.get_contents("dados_logistica.csv").decoded_content.decode()), dayfirst=True)
-    df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_content.decode()), dayfirst=True)
-
-    df_v.columns = df_v.columns.str.strip().str.lower()
-    df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+    df_v = pd.read_csv(io.StringIO(rp.get_contents("dados_logistica.csv").decoded_content.decode()))
+    df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_content.decode()))
 
     st.markdown('<div class="agenda-header">📋 OBSERVAÇÕES DA SEMANA</div>', unsafe_allow_html=True)
     novas_obs = []
@@ -42,19 +37,21 @@ try:
         st.success("Salvo!"); st.rerun()
 
     st.markdown("---")
-    lista_p = sorted([p for p in df_v["passageiro"].unique() if str(p).strip() != ""]) if "passageiro" in df_v.columns else []
-    p_sel = st.multiselect("Filtrar por Passageiro:", options=lista_p)
+    p_sel = st.multiselect("Filtrar por Passageiro:", options=sorted(list(df_v["passageiro"].dropna().unique())))
     df_f = df_v[df_v['passageiro'].isin(p_sel)] if p_sel else df_v
 
     cols_pl = ["passageiro", "semana", "data", "horário", "saída", "cia/nº voo", "horário do voo", "data do voo", "hotel em cuiabá", "motorista"]
     cols_cp = ["passageiro", "semana", "data", "horário", "cia/nº voo", "hotel cuiabá", "motorista", "hospedagem . lacerda"]
     cols_out = ["passageiro", "trajeto", "semana", "data", "horário", "cia/nº voo", "horário do voo", "motorista"]
 
-    for c in list(set(cols_pl + cols_cp + cols_out)):
-        if c not in df_f.columns: df_f[c] = ""
-        else: df_f[c] = df_f[c].fillna("").astype(str).str.strip()
-
-    df_f["trajeto"] = df_f["trajeto"].str.lower()
-
     st.markdown('<div class="trecho-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
-    st.dataframe(df
+    st.dataframe(df_f[df_f['trajeto'].str.lower() == "pontes e lacerda x cuiabá"][cols_pl], width='stretch', hide_index=True)
+
+    st.markdown('<div class="trecho-header">CUIABÁ X PONTES E LACERDA</div>', unsafe_allow_html=True)
+    st.dataframe(df_f[df_f['trajeto'].str.lower() == "cuiabá x pontes e lacerda"][cols_cp], width='stretch', hide_index=True)
+
+    st.markdown('<div class="trecho-header">OUTROS TRAJETOS E CIDADES (VIAGENS ESPECIAIS)</div>', unsafe_allow_html=True)
+    st.dataframe(df_f[~df_f['trajeto'].str.lower().isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])][cols_out], width='stretch', hide_index=True)
+
+except Exception as e:
+    st.error(f"Erro no banco de dados: {e}")
