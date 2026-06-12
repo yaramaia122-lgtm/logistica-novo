@@ -21,13 +21,15 @@ try:
     df_v = pd.read_csv(io.StringIO(rp.get_contents("dados_logistica.csv").decoded_content.decode()))
     df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_content.decode()))
 
-    # Padronização segura das Observações Semanais
     df_o.columns = df_o.columns.str.strip().str.lower()
+    df_v.columns = df_v.columns.str.strip().str.lower()
     df_o = df_o.loc[:, ~df_o.columns.duplicated()]
+    df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+    
     for c in ["dia", "data", "observacao"]: df_o[c] = df_o[c].fillna("").astype(str).str.strip() if c in df_o.columns else ""
 
     st.markdown('<div class="agenda-header">Observações</div>', unsafe_allow_html=True)
-    df_o_edit = st.data_editor(df_o[["dia", "data", "observacao"]], column_config={"dia": st.column_config.TextColumn("Dia da Semana", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Observação", width="large")}, hide_index=True, width='stretch', row_height=100, key="ed_obs_v18")
+    df_o_edit = st.data_editor(df_o[["dia", "data", "observacao"]], column_config={"dia": st.column_config.TextColumn("Dia da Semana", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Observação", width="large")}, hide_index=True, width='stretch', row_height=100, key="ed_obs_v19")
 
     if st.button("💾 Salvar Alterações das Observações", width='stretch'):
         df_o["observacao"] = df_o_edit["observacao"]
@@ -35,12 +37,12 @@ try:
         st.success("Salvo!"); st.rerun()
 
     st.markdown("---")
-    
-    # 🛡️ NORMALIZAÇÃO TOTAL DO BANCO DE DADOS (Remove espaços, acentos e padroniza tudo em minúsculo)
-    df_v.columns = df_v.columns.str.strip().str.lower().str.replace("á", "a").str.replace("º", "")
-    df_v = df_v.loc[:, ~df_v.columns.duplicated()]
-    df_f_limpo = df_v.fillna("").astype(str)
-
-    lista_p = sorted([p for p in df_f_limpo["passageiro"].unique() if str(p).strip() != ""]) if "passageiro" in df_f_limpo.columns else []
+    lista_p = sorted([p for p in df_v["passageiro"].unique() if str(p).strip() != ""]) if "passageiro" in df_v.columns else []
     p_sel = st.multiselect("Filtrar por Passageiro:", options=lista_p)
-    if p_sel: df_
+    df_f = df_v[df_v['passageiro'].isin(p_sel)] if p_sel else df_v
+    df_f_limpo = df_f.fillna("").astype(str)
+
+    t_str = df_f_limpo['trajeto'].str.strip().str.lower().str.replace("á", "a")
+    
+    c_pl = ["passageiro", "semana", "data", "horario", "saida", "cia/n vuo", "horario do vuo", "data do vuo", "hotel em cuiaba", "motorista"]
+    c_cp =
