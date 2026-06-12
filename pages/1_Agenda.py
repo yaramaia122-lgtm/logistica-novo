@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from github import Github, Auth
 import io
+from datetime import datetime
 
 if 'logado' not in st.session_state or not st.session_state['logado']:
     st.session_state['logado'] = False
@@ -34,15 +35,15 @@ try:
         if col not in df_o.columns: df_o[col] = ""
         else: df_o[col] = df_o[col].fillna("").astype(str).str.strip()
 
-    # 🛠️ AJUSTE AQUI: row_height=60 expande a altura das linhas para caber o texto dos dois motoristas
+    # 🛠️ AJUSTE CRÍTICO: st.column_config.TextColumn agora permite quebras de linha direto na tabela
     df_o_edit = st.data_editor(
         df_o[["dia", "data", "observacao"]],
         column_config={
             "dia": st.column_config.TextColumn("Dia da Semana", disabled=True),
             "data": st.column_config.TextColumn("Data", disabled=True),
-            "observacao": st.column_config.TextColumn("Observação", width="large")
+            "observacao": st.column_config.TextColumn("Observação", width="large", help="Dê dois cliques para editar. Use quebras de linha normais.")
         },
-        hide_index=True, use_container_width=True, row_height=60, key="ed_obs_v7"
+        hide_index=True, use_container_width=True, row_height=80, key="ed_obs_v8"
     )
 
     if st.button("💾 Salvar Alterações das Observações", use_container_width=True):
@@ -69,8 +70,14 @@ try:
     df_cp_r = df_f[df_f['trajeto'] == "cuiabá x pontes e lacerda"][c_cp]
     df_out_r = df_f[~df_f['trajeto'].isin(["pontes e lacerda x cuiabá", "cuiabá x pontes e lacerda"])][c_out]
 
-    style_tag = "<style>body{font-family:Arial;margin:10px;font-size:10px;} h2{background:#FF7F50;color:white;padding:5px;text-align:center;} h3{background:#002D5E;color:white;padding:4px;} table{width:100%;border-collapse:collapse;margin-bottom:10px;} th,td{border:1px solid #ddd;padding:4px;text-align:left;} th{background:#f2f2f2;}</style>"
-    html_out = f"<html><head><meta charset='utf-8'>{style_tag}</head><body><h2>AURA LOGISTICS - AGENDA</h2>"
+    # 🕒 Captura o carimbo exato do momento da geração do relatório
+    data_hora_emissao = datetime.now().strftime('%d/%m/%Y às %H:%M')
+
+    # Relatório de uma folha atualizado com o carimbo de data/hora solicitado
+    style_tag = "<style>body{font-family:Arial;margin:10px;font-size:10px;} .meta-info{font-size:9px;color:#555;text-align:right;margin-bottom:10px;} h2{background:#FF7F50;color:white;padding:5px;text-align:center;margin-bottom:5px;} h3{background:#002D5E;color:white;padding:4px;margin-top:10px;} table{width:100%;border-collapse:collapse;margin-bottom:10px;} th,td{border:1px solid #ddd;padding:4px;text-align:left;vertical-align:top;} th{background:#f2f2f2;}</style>"
+    html_out = f"<html><head><meta charset='utf-8'>{style_tag}</head><body>"
+    html_out += f"<div class='meta-info'>Relatório emitido em: {data_hora_emissao}</div>"
+    html_out += "<h2>AURA LOGISTICS - AGENDA</h2>"
     html_out += "<h3>OBSERVAÇÕES DA SEMANA</h3>" + df_o_edit.to_html(index=False)
     html_out += "<h3>PONTES E LACERDA X CUIABÁ</h3>" + df_pl_r.to_html(index=False)
     html_out += "<h3>CUIABÁ X PONTES E LACERDA</h3>" + df_cp_r.to_html(index=False)
