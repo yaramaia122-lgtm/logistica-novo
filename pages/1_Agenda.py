@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from github import Github, Auth
 import io
+from datetime import datetime
 
 if 'logado' not in st.session_state or not st.session_state['logado']:
     st.session_state['logado'] = False
@@ -18,6 +19,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def auto_calcular_semana(data_str):
+    if not data_str or pd.isna(data_str) or str(data_str).strip() == "" or str(data_str).lower() == "nan":
+        return ""
+    dias = {0: "Segunda-Feira", 1: "Terça-Feira", 2: "Quarta-Feira", 3: "Quinta-Feira", 4: "Sexta-Feira", 5: "Sábado", 6: "Domingo"}
+    try:
+        ds = str(data_str).strip()
+        if "-" in ds: ds = datetime.strptime(ds.split(" ")[0], "%Y-%m-%d").strftime("%d/%m/%Y")
+        p = ds.split("/")
+        dt = datetime.strptime(f"{ds}/{datetime.now().year}" if len(p)==2 else ds, "%d/%m/%Y")
+        return dias[dt.weekday()]
+    except: return ""
+
 try:
     tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
     rp = Github(auth=Auth.Token(tk)).get_repo(repo)
@@ -31,8 +44,12 @@ try:
     novas_obs = []
     for idx, row in df_o.iterrows():
         c1, c2, c3 = st.columns([1.5, 1, 6.5])
-        c1.markdown(f"<p style='padding-top:15px; font-weight:bold;'>{row.get('dia', '')}</p>", unsafe_allow_html=True)
-        c2.markdown(f"<p style='padding-top:15px; color:#555555;'>{row.get('data', '')}</p>", unsafe_allow_html=True)
+        v_data = str(row.get('data', '')).strip() if pd.notna(row.get('data', '')) else ""
+        v_dia = str(row.get('dia', '')).strip() if pd.notna(row.get('dia', '')) else ""
+        if (v_dia == "" or v_dia == "nan") and v_data != "": v_dia = auto_calcular_semana(v_data)
+        
+        c1.markdown(f"<p style='padding-top:15px; font-weight:bold;'>{v_dia}</p>", unsafe_allow_html=True)
+        c2.markdown(f"<p style='padding-top:15px; color:#555555;'>{v_data}</p>", unsafe_allow_html=True)
         novas_obs.append(c3.text_area(label=f"O_{idx}", value=str(row.get('observacao', '')), key=f"obs_{idx}", label_visibility="collapsed"))
 
     if st.button("💾 Salvar Alterações das Observações", width='stretch'):
@@ -52,6 +69,12 @@ try:
     for c in list(set(cols_pl + cols_cp + cols_out)):
         if c not in df_f.columns: df_f[c] = ""
         else: df_f[c] = df_f[c].fillna("").astype(str).str.strip()
+
+    # 🛡️ PROTEÇÃO ATIVA: Se dados antigos vierem sem semana, calcula dinamicamente para não exibir em branco
+    if "semana" in df_f.columns and "data" in df_f.columns:
+        for i, r in df_f.iterrows():
+            if r["semana"] == "" or r["semana"] == "nan":
+                df_f.at[i, "semana"] = auto_calcular_semana(r["data"])
 
     df_f["trajeto"] = df_f["trajeto"].str.lower()
 
