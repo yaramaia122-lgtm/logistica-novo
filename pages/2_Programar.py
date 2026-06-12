@@ -30,11 +30,14 @@ with st.form("form_logistica", clear_on_submit=True):
     st.write("### ✈️ Informações Adicionais de Voo / Hospedagem")
     cia_voo = st.text_input("Cia / Nº do Voo:")
     horario_voo = st.text_input("Horário do Voo:")
-    # 🛡️ CORREÇÃO AQUI: Removido o argumento invisível 'json_encoder' que quebrava o app
     data_voo = st.date_input("Data do Voo (Se diferente):", value=None)
     
     hotel_cuiaba = st.text_input("Hotel em Cuiabá (Se aplicável):")
     hospedagem_lacerda = st.text_input("Hospedagem em P. Lacerda (Se aplicável):")
+    
+    st.markdown("---")
+    st.write("### 💰 Gestão e Operação")
+    custo = st.text_input("Custo da Operação (R$):")
     motorista = st.text_input("Nome do Motorista Designado:")
     
     enviar = st.form_submit_button("💾 Gravar e Sincronizar Programação", width='stretch')
@@ -67,8 +70,9 @@ if enviar:
                 "data do voo": data_voo_br,
                 "hotel em cuiabá": hotel_cuiaba.strip(),
                 "hotel cuiabá": hotel_cuiaba.strip(),
-                "motorista": motorista.strip(),
-                "hospedagem . lacerda": hospedagem_lacerda.strip()
+                "hospedagem . lacerda": hospedagem_lacerda.strip(),
+                "custo": custo.strip(),
+                "motorista": motorista.strip()
             }
             
             df_nova = pd.DataFrame([nova_viagem])
