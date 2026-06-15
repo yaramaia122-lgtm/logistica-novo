@@ -4,6 +4,7 @@ from github import Github, Auth
 import io
 from datetime import datetime, timedelta
 import zoneinfo
+import base64
 
 if 'logado' not in st.session_state or not st.session_state['logado']:
     st.session_state['logado'] = False
@@ -44,9 +45,14 @@ for i, dia in enumerate(dias_s):
 df_o_at = pd.DataFrame(dados_obs)
 
 st.write("### 📝 Observações Semanais")
-# 📌 NOVA KEY PARA LIMPAR O CACHE DO EDITOR
-df_o_edit = st.data_editor(df_o_at, column_config={"dia": st.column_config.TextColumn("Dia", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Observação", width="large")}, hide_index=True, width='stretch', row_height=100, key="chave_editor_obs_v34")
+df_o_edit = st.data_editor(df_o_at, column_config={"dia": st.column_config.TextColumn("Dia", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Observação", width="large")}, hide_index=True, width='stretch', row_height=100, key="editor_final_protegido_v35")
 
 if st.button("💾 Salvar Alterações das Observações", width='stretch'):
     rp.update_file("observacoes.csv", "Update", df_o_edit.to_csv(index=False), rp.get_contents("observacoes.csv").sha)
-    st.success("Sal
+    st.success("Salvo!"); st.rerun()
+
+st.markdown("---")
+
+df_v.columns = df_v.columns.str.strip().str.lower()
+df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+if "status" not in df_v.columns: df_v["status"] = "
