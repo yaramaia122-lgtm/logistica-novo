@@ -12,8 +12,12 @@ if 'logado' not in st.session_state or not st.session_state['logado']:
 
 st.set_page_config(page_title="Agenda - AURA", layout="wide")
 
-# 🎨 DESIGN E CORES ORIGINAIS DA TELA (CORAL E AZUL ESCURO)
-st.markdown("<style>.stApp { background-color: #F0F8FF !important; } .agenda-header { background-color: #FF7F50 !important; color: white !important; padding: 10px; text-align: center; font-weight: bold; border-radius: 8px; margin-bottom: 15px; } .treche-header { background-color: #002D5E !important; color: white !important; padding: 6px 12px; font-weight: bold; border-radius: 4px; margin-top: 12px; }</style>", unsafe_allow_html=True)
+# 🎨 CORES E DESIGN ORIGINAIS DA SUA TELA
+st.markdown("""<style>
+    .stApp { background-color: #F0F8FF !important; }
+    .agenda-header { background-color: #FF7F50 !important; color: white !important; padding: 10px; text-align: center; font-weight: bold; border-radius: 8px; margin-bottom: 15px; }
+    .treche-header { background-color: #002D5E !important; color: white !important; padding: 6px 12px; font-weight: bold; border-radius: 4px; margin-top: 12px; }
+</style>""", unsafe_allow_html=True)
 
 # 2. CONEXÃO COM O REPOSITÓRIO GITHUB
 tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
@@ -26,7 +30,7 @@ df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_conten
 df_o.columns = df_o.columns.str.strip().str.lower()
 df_o = df_o.loc[:, ~df_o.columns.duplicated()]
 
-# 3. CONTROLE DE DATAS DA AGENDA SEMANAL
+# 3. CONTROLE DE DATAS DA SEMANA
 fuso = zoneinfo.ZoneInfo("America/Cuiaba")
 hoje_f = datetime.now(fuso).date()
 
@@ -49,10 +53,11 @@ for i, dia in enumerate(dias_s):
     dados_obs.append({"dia": dia, "data": datas_s[i], "observacao": obs_dict.get(dia.lower(), "")})
 df_o_at = pd.DataFrame(dados_obs)
 
-# TABELA ORIGINAL INTERATIVA DE OBSERVAÇÕES
+# TABELA INTERATIVA DE OBSERVAÇÕES NA TELA
 st.markdown('<div class="agenda-header">Observações Semanais</div>', unsafe_allow_html=True)
 df_o_edit = st.data_editor(
     df_o_at, 
     column_config={
         "dia": st.column_config.TextColumn("Dia da Semana", disabled=True), 
-        "
+        "data": st.column_config.TextColumn("Data", disabled=True), 
+        "observacao": st.column_config.TextColumn("Observação", width="
