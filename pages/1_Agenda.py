@@ -42,7 +42,7 @@ for i, dia in enumerate(dias_s):
 df_o_at = pd.DataFrame(dados_obs)
 
 st.write("### 📝 Observações Semanais")
-df_o_edit = st.data_editor(df_o_at, hide_index=True, width='stretch', key="ed_obs_v36")
+df_o_edit = st.data_editor(df_o_at, hide_index=True, width='stretch', key="ed_obs_v37")
 
 if st.button("💾 Salvar Alterações", width='stretch'):
     rp.update_file("observacoes.csv", "Update", df_o_edit.to_csv(index=False), rp.get_contents("observacoes.csv").sha)
@@ -50,23 +50,15 @@ if st.button("💾 Salvar Alterações", width='stretch'):
 
 df_v.columns = df_v.columns.str.strip().str.lower()
 df_v = df_v.loc[:, ~df_v.columns.duplicated()]
-df_v["status"] = df_v["status"].fillna("Confirmado").astype(str).str.strip() if "status" in df_v.columns else "Confirmado"
+
+# 🛡️ NOVA LÓGICA SEM ASPAS LONGAS NA VERIFICAÇÃO (Evita o corte da sincronização)
+if "status" in df_v.columns:
+    df_v["status"] = df_v["status"].fillna("")
+else:
+    df_v["status"] = ""
+
 df_v = df_v.fillna("").astype(str)
 
-df_vis = df_v[df_v["status"] == "Confirmado"]
-df_sem = df_vis[df_vis["data"].isin(datas_s)]
-
-cols_ok = [c for c in df_sem.columns if "r$" not in c and "custo" not in c and "valor" not in c and "status" not in c]
-df_lp = df_sem[cols_ok]
-
-n_col = {"passageiro": "Passageiro", "trajeto": "Trajeto", "semana": "Semana", "data": "Data", "horario": "Horário", "saida": "Saída", "cia/nº voo": "Cia/Nº Voo", "motorista": "Motorista"}
-t_str = df_lp['trajeto'].str.strip().str.lower().str.replace("á", "a")
-
-df_pl = df_lp[t_str == "pontes e lacerda x cuiaba"].rename(columns=n_col)
-df_cp = df_lp[t_str == "cuiaba x pontes e lacerda"].rename(columns=n_col)
-
-# 📥 MONTAGEM NATIVA EM HTML PURA (Esqueça strings longas ou variáveis b64)
-dt_c = datetime.now(fuso).strftime('%d/%m/%Y %H:%M')
-html_final = f"<h2>AURA LOGISTICS</h2><p>Gerado em: {dt_c}</p><h3>OBSERVACOES</h3>{df_o_edit.to_html(index=False)}<h3>P. LACERDA X CUIABA</h3>{df_pl.to_html(index=False)}<h3>CUIABA X P. LACERDA</h3>{df_cp.to_html(index=False)}"
-
-st.download_button(label="📄 Baixar Agenda Formatada (HTML/PDF)", data=html_final, file_
+# Filtra removendo o que foi cancelado ou ocultado de forma direta
+df_vis = df_v[(df_v["status"] != "Cancelado") & (df_v["status"] != "Ocultado")]
+df_sem = df_vis
