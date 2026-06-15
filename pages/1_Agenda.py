@@ -14,7 +14,8 @@ st.set_page_config(page_title="Agenda - AURA", layout="wide")
 tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
 rp = Github(auth=Auth.Token(tk)).get_repo(repo)
 
-df_v = pd.read_csv(io.StringIO(rp.get_contents("dados_logistica.csv").decoded_content.decode()))
+f_log = rp.get_contents("dados_logistica.csv")
+df_v = pd.read_csv(io.StringIO(f_log.decoded_content.decode()))
 df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_content.decode()))
 
 df_o.columns = df_o.columns.str.strip().str.lower()
@@ -43,7 +44,7 @@ for i, dia in enumerate(dias_s):
 df_o_at = pd.DataFrame(dados_obs)
 
 st.write("### 📝 Observações Semanais")
-df_o_edit = st.data_editor(df_o_at, column_config={"dia": st.column_config.TextColumn("Dia", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Observação", width="large")}, hide_index=True, width='stretch', row_height=100, key="ed_obs_v32")
+df_o_edit = st.data_editor(df_o_at, column_config={"dia": st.column_config.TextColumn("Dia", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Observação", width="large")}, hide_index=True, width='stretch', row_height=100, key="ed_obs_v33")
 
 if st.button("💾 Salvar Alterações das Observações", width='stretch'):
     rp.update_file("observacoes.csv", "Update", df_o_edit.to_csv(index=False), rp.get_contents("observacoes.csv").sha)
@@ -67,8 +68,9 @@ if st.button("⚠️ Atualizar Status", width='stretch'):
     if v_sel:
         idx = int(v_sel.split(" - ")[0])
         df_v.at[idx, "status"] = n_st
-        rp.update_file("dados_logistica.csv", "Status", df_v.to_csv(index=False), rp.get_contents("dados_logistica.csv").sha)
-        st.success("Status updated!"); st.rerun()
+        # 📌 CORREÇÃO AQUI: Agora está chamando f_log.sha corretamente
+        rp.update_file("dados_logistica.csv", "Status", df_v.to_csv(index=False), f_log.sha)
+        st.success("Status atualizado!"); st.rerun()
 
 st.markdown("---")
 
@@ -88,19 +90,16 @@ df_pl = df_lp[t_str == "pontes e lacerda x cuiaba"].rename(columns=n_col)
 df_cp = df_lp[t_str == "cuiaba x pontes e lacerda"].rename(columns=n_col)
 df_out = df_lp[(t_str != "pontes e lacerda x cuiaba") & (t_str != "cuiaba x pontes e lacerda")].rename(columns=n_col)
 
-# 🔄 ESTRUTURAÇÃO DO DOCUMENTO DE IMPRESSÃO
 def gerar_relatorio_html(dt_c, df_o_html, df_pl, df_cp):
     style = """
     <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 20px; font-size: 11px; line-height: 1.4; }
-        .header { background: #FF7F50; color: white; text-align: center; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
-        .header h2 { margin: 0; font-size: 18px; letter-spacing: 1px; }
-        .meta { text-align: right; color: #777; font-size: 10px; margin-bottom: 10px; }
-        h3 { background: #002D5E; color: white; padding: 6px 10px; border-radius: 4px; margin-top: 20px; font-size: 12px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; background: #fff; }
-        th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
-        th { background: #f5f5f5; color: #111; font-weight: bold; text-transform: uppercase; font-size: 10px; }
-        tr:nth-child(even) { background: #fafafa; }
+        body { font-family: Arial, sans-serif; color: #333; margin: 20px; font-size: 11px; }
+        .header { background: #FF7F50; color: white; text-align: center; padding: 12px; border-radius: 6px; }
+        .meta { text-align: right; color: #777; font-size: 10px; }
+        h3 { background: #002D5E; color: white; padding: 6px; border-radius: 4px; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        th { background: #f5f5f5; font-weight: bold; }
     </style>
     """
     html = f"<html><head><meta charset='utf-8'>{style}</head><body>"
