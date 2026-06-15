@@ -12,7 +12,7 @@ if 'logado' not in st.session_state or not st.session_state['logado']:
 
 st.set_page_config(page_title="Agenda - AURA", layout="wide")
 
-# 🎨 ESTILIZAÇÃO VISUAL ORIGINAL (CORAL E AZUL)
+# 🎨 AS CORES ORIGINAIS DA SUA AGENDA (CORAL E AZUL ESCURO)
 st.markdown("""<style>
     .stApp { background-color: #F0F8FF !important; }
     .agenda-header { background-color: #FF7F50 !important; color: white !important; padding: 10px; text-align: center; font-weight: bold; border-radius: 8px; margin-bottom: 15px; }
@@ -42,32 +42,3 @@ dias_s = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sext
 datas_s = [(segunda + timedelta(days=i)).strftime('%d/%m/%Y') for i in range(7)]
 
 try: data_salva = str(df_o.iloc[0]["data"]).strip()
-except: data_salva = ""
-
-obs_dict = {}
-if data_salva == datas_s[0]:
-    obs_dict = dict(zip(df_o["dia"].str.strip().str.lower(), df_o["observacao"].fillna("")))
-
-# TÍTULO EM CORAL ORIGINAL
-st.markdown('<div class="agenda-header">Observações Semanais</div>', unsafe_allow_html=True)
-
-# 📌 REENGENHARIA VISUAL: Substitui a tabela travada por inputs de texto flexíveis
-novas_obs = {}
-with st.expander("📋 Clique aqui para visualizar e digitar as Observações do Período", expanded=True):
-    for i, dia in enumerate(dias_s):
-        # Cria uma caixa de texto grande para cada dia que aceita múltiplas linhas visíveis
-        texto_padrao = obs_dict.get(dia.lower(), "")
-        label_campo = f"{dia} ({datas_s[i]})"
-        novas_obs[dia.lower()] = st.text_area(label_campo, value=texto_padrao, height=85, key=f"obs_{dia.lower()}_v3")
-
-if st.button("💾 Salvar Alterações das Observações", width='stretch'):
-    # Remonta o arquivo para gravação
-    dados_salvar = []
-    for i, dia in enumerate(dias_s):
-        dados_salvar.append({
-            "dia": dia,
-            "data": datas_s[i],
-            "observacao": novas_obs[dia.lower()].strip()
-        })
-    df_o_pronto = pd.DataFrame(dados_salvar)
-    rp.update_file("observacoes.csv", "Update Obs", df_o_pronto.to_csv(index=False), rp.get_contents("observacoes.csv").
