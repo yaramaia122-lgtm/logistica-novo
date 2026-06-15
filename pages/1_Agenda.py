@@ -46,7 +46,7 @@ for i, dia in enumerate(dias_s):
 df_o_at = pd.DataFrame(dados_obs)
 
 st.markdown('<div class="agenda-header">Observações Semanais</div>', unsafe_allow_html=True)
-df_o_edit = st.data_editor(df_o_at, column_config={"dia": st.column_config.TextColumn("Dia da Semana", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Observação", width="large")}, hide_index=True, width='stretch', row_height=100, key="ed_obs_v28")
+df_o_edit = st.data_editor(df_o_at, column_config={"dia": st.column_config.TextColumn("Dia da Semana", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Observação", width="large")}, hide_index=True, width='stretch', row_height=100, key="ed_obs_v29")
 
 if st.button("💾 Salvar Alterações das Observações", width='stretch'):
     rp.update_file("observacoes.csv", "Update", df_o_edit.to_csv(index=False), rp.get_contents("observacoes.csv").sha)
@@ -90,4 +90,20 @@ n_col = {"passageiro": "Passageiro", "trajeto": "Trajeto", "semana": "Semana", "
 t_str = df_lp['trajeto'].str.strip().str.lower().str.replace("á", "a")
 
 df_pl = df_lp[t_str == "pontes e lacerda x cuiaba"].rename(columns=n_col)
-df_cp = df_lp
+df_cp = df_lp[t_str == "cuiaba x pontes e lacerda"].rename(columns=n_col)
+df_out = df_lp[(t_str != "pontes e lacerda x cuiaba") & (t_str != "cuiaba x pontes e lacerda")].rename(columns=n_col)
+
+# 📥 NOVO BOTÃO SEGURO E LEVE: Baixa um relatório em CSV perfeito para o Excel/Celular
+df_exportar = pd.concat([df_pl, df_cp, df_out], ignore_index=True)
+csv_data = df_exportar.to_csv(index=False).encode('utf-8-sig')
+
+st.download_button(label="📄 Baixar Lista de Viagens da Semana (Excel/WhatsApp)", data=csv_data, file_name="agenda_motoristas.csv", mime="text/csv", width='stretch')
+
+st.markdown('<div class="treche-header">PONTES E LACERDA X CUIABÁ</div>', unsafe_allow_html=True)
+st.dataframe(df_pl, width='stretch', hide_index=True)
+
+st.markdown('<div class="treche-header">CUIABÁ X PONTES E LACERDA</div>', unsafe_allow_html=True)
+st.dataframe(df_cp, width='stretch', hide_index=True)
+
+st.markdown('<div class="treche-header">OUTROS TRAJETOS E CIDADES (VIAGENS ESPECIAIS)</div>', unsafe_allow_html=True)
+st.dataframe(df_out, width='stretch', hide_index=True)
