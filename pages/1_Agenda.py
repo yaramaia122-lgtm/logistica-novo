@@ -63,4 +63,47 @@ st.markdown('<div class="section-header">Observações Semanais Operacionais</di
 cfg_col = {
     "dia": st.column_config.TextColumn("Dia da Semana", disabled=True), 
     "data": st.column_config.TextColumn("Data", disabled=True), 
-    "observacao": st.column_config.TextColumn("Instruções / Observações", width="
+    "observacao": st.column_config.TextColumn("Instruções / Observações", width="large", disabled=False)
+}
+
+df_o_edit = st.data_editor(
+    df_o_at, 
+    column_config=cfg_col, 
+    hide_index=True, 
+    width='stretch', 
+    row_height=130, 
+    key="ed_obs_corp_v12"
+)
+
+if st.button("Salvar Alterações das Observações", width='stretch'):
+    rp.update_file("observacoes.csv", "Update Obs", df_o_edit.to_csv(index=False), rp.get_contents("observacoes.csv").sha)
+    st.success("Alterações salvas com sucesso."); st.rerun()
+
+st.markdown("---")
+
+# 4. TRATAMENTO DOS DADOS DE VIAGEM
+df_v.columns = df_v.columns.str.strip().str.lower()
+df_v.columns = df_v.columns.str.replace("á", "a").str.replace("í", "i").str.replace("º", "")
+df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+
+if "status" not in df_v.columns: df_v["status"] = "Confirmado"
+df_v["status"] = df_v["status"].fillna("Confirmado").astype(str).str.strip()
+df_v = df_v.fillna("").astype(str)
+
+st.write("### Gerenciamento de Status")
+lista_g = [f"{i} - {row['passageiro']} ({row['data']}) [{row['status']}]" for i, row in df_v.iterrows() if str(row['passageiro']).strip() != ""]
+col_s, col_st = st.columns([2, 1])
+v_sel = col_s.selectbox("Selecione a viagem para alteração de status:", options=[""] + lista_g)
+n_st = col_st.selectbox("Novo status:", ["Confirmado", "Cancelado", "Ocultado"])
+
+if st.button("Atualizar Status do Registro Selecionado", width='stretch'):
+    if v_sel:
+        idx = int(v_sel.split(" - ")[0])
+        df_v.at[idx, "status"] = n_st
+        rp.update_file("dados_logistica.csv", "Status Update", df_v.to_csv(index=False), f_log.sha)
+        st.success("Status atualizado com sucesso."); st.rerun()
+
+st.markdown("---")
+
+# 5. FILTRAGEM E SELEÇÃO RESTRITA DE COLUNAS (APENAS AS SOLICITADAS)
+df_vis = df_v
