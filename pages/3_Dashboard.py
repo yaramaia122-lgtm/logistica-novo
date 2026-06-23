@@ -4,41 +4,36 @@ from github import Github, Auth
 import io
 
 if 'logado' not in st.session_state or not st.session_state['logado']:
-    st.session_state['logado'] = False
-    st.switch_page("main.py")
+    st.session_state['logado'] = False; st.switch_page("main.py")
 
-st.set_page_config(page_title="Dashboard - AURA", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Dashboard - AURA", layout="wide")
+st.title("📊 Painel de Controle de Custos de Logística")
 
-with st.sidebar:
-    st.write(f"Usuário ativo: **{st.session_state.get('user', 'Funcionário')}**")
-    if st.button("Sair do Sistema", use_container_width=True):
-        st.session_state['logado'] = False
-        st.session_state['user'] = None
-        st.switch_page("main.py")
+tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
+rp = Github(auth=Auth.Token(tk)).get_repo(repo)
 
-try:
-    tk = st.secrets["GITHUB_TOKEN"]
-    repo_nome = st.secrets["GITHUB_REPO"]
-    rp = Github(auth=Auth.Token(tk)).get_repo(repo_nome)
-    f_v = rp.get_contents("dados_logistica.csv")
-    df_v = pd.read_csv(io.StringIO(f_v.decoded_content.decode()))
+df_v = pd.read_csv(io.StringIO(rp.get_contents("dados_logistica.csv").decoded_content.decode()))
+df_v.columns = df_v.columns.str.strip().str.lower()
 
-    df_v["Total"] = pd.to_numeric(df_v["Total"], errors="coerce").fillna(0)
-    df_at = df_v[df_v["Status"] != "Cancelada"]
+# Força a conversão das colunas financeiras de texto para número real
+for col in ["hotel_v", "comb_v", "aereo_v", "outros_v", "total", "hotel (r$)", "aéreo (r$)", "transfer (r$)", "outros (r$)"]:
+    if col in df_v.columns:
+        df_v[col] = pd.to_numeric(df_v[col].astype(str).str.replace("R$", "").str.replace(",", ".").str.strip(), errors='coerce').fillna(0.0)
 
-    st.write("### Indicadores Operacionais e Financeiros")
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Viagens Agendadas", len(df_at))
-    m2.metric("Quantidade de Passageiros", df_at["Passageiro"].nunique())
-    m3.metric("Valores Totais Ativos", f"R$ {df_at['Total'].sum():,.2f}")
-    m4.metric("Motoristas Alocados", df_at["Motorista"].nunique())
+# Resgate inteligente de somas tratando colunas novas e antigas
+tot_hotel = df_v["hotel_v"].sum() if "hotel_v" in df_v.columns else df_v["hotel (r$)"].sum()
+tot_aereo = df_v["aereo_v"].sum() if "aereo_v" in df_v.columns else df_v["aéreo (r$)"].sum()
+tot_comb = df_v["comb_v"].sum() if "comb_v" in df_v.columns else df_v["transfer (r$)"].sum()
+tot_outros = df_v["outros_v"].sum() if "outros_v" in df_v.columns else df_v["outros (r$)"].sum()
 
-    st.markdown("---")
-    st.write("### Custos Estruturados por Centro de Custo")
-    if not df_at.empty:
-        st.bar_chart(df_at.groupby("Centro_Custo")["Total"].sum())
-    else:
-        st.info("Nenhum dado de custo ativo encontrado para gerar os gráficos.")
+custo_total_geral = tot_hotel + tot_aereo + tot_comb + tot_outros
 
-except Exception as e:
-    st.error(f"Erro na conexão com o banco de dados: {e}")
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("🏨 Hospedagens", f"R$ {tot_hotel:,.2f}")
+c2.metric("✈️ Passagens Aéreas", f"R$ {tot_aereo:,.2f}")
+c3.metric("⛽ Deslocamento / Combustível", f"R$ {tot_comb:,.2f}")
+c4.metric("📦 Outros Custos", f"R$ {tot_outros:,.2f}")
+
+st.markdown("---")
+st.metric("💰 CUSTO TOTAL ACUMULADO DA OPERAÇÃO", f"R$ {custo_total_geral:,.2f}")
+st.dataframe(df_v, width='stretch', hide_index=True)
