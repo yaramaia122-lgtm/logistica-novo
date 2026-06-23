@@ -20,7 +20,6 @@ st.markdown("""<style>
     .subsection-header { color: #002D5E !important; font-weight: bold; font-size: 12pt; margin-top: 15px; margin-bottom: 10px; border-left: 4px solid #FF7F50; padding-left: 8px; }
 </style>""", unsafe_allow_html=True)
 
-# TÍTULOS LIMPOS E PROFISSIONAIS
 st.markdown('<div class="main-title">Painel Administrativo de Logística</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Gerenciamento centralizado de registros, trajetos e controle financeiro operacional</div>', unsafe_allow_html=True)
 
@@ -28,9 +27,12 @@ st.markdown('<div class="subtitle">Gerenciamento centralizado de registros, traj
 tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
 rp = Github(auth=Auth.Token(tk)).get_repo(repo)
 
-# Resgate correto do arquivo CSV de logística
 f_file = rp.get_contents("dados_logistica.csv")
 df_v = pd.read_csv(io.StringIO(f_file.decoded_content.decode()))
+
+# 🛠️ CORREÇÃO CRÍTICA DE FORMATO: Força a coluna data a ser interpretada estritamente como texto formatado
+if "data" in df_v.columns:
+    df_v["data"] = df_v["data"].astype(str).str.strip()
 
 # 3. FORMULÁRIO ESTRUTURADO DE INCLUSÃO E ALTERAÇÃO DE DADOS
 st.markdown('<div class="section-header">Inserir ou Alterar Registro Operacional</div>', unsafe_allow_html=True)
@@ -57,13 +59,12 @@ if st.button("Gravar Alterações na Base de Dados", width='stretch'):
         st.error("Erro: O preenchimento do nome do passageiro é obrigatório para prosseguir.")
     else:
         try:
-            # Consolidação matemática do custo total
             v_total = float(v_hotel) + float(v_comb) + float(v_aereo) + float(v_outros)
             
             novo_reg = {
                 "passageiro": p_nome.strip(), 
                 "motorista": m_nome, 
-                "data": d_viagem.strftime('%d/%m/%Y'),
+                "data": d_viagem.strftime('%d/%m/%Y'), # Garante gravação dd/mm/yyyy com barras
                 "hora_saida": h_saida.strip(), 
                 "trajeto": t_escolha, 
                 "status": s_escolha,
@@ -76,12 +77,10 @@ if st.button("Gravar Alterações na Base de Dados", width='stretch'):
                 "voo": ""
             }
             
-            # Adiciona o registro atualizado ao DataFrame original
             df_v = pd.concat([df_v, pd.DataFrame([novo_reg])], ignore_index=True)
-            
-            # Atualização imediata no repositório GitHub
             rp.update_file("dados_logistica.csv", "Logistics Base Auto-Update via Admin", df_v.to_csv(index=False), f_file.sha)
-            st.success("Registro operacional persistido com sucesso na base de dados."); st.rerun()
+            st.success("Registro operacional persistido com sucesso na base de dados.")
+            st.rerun()
         except ValueError:
             st.error("Erro: Certifique-se de que todos os valores informados nos campos de custos são numéricos.")
 
@@ -89,4 +88,13 @@ st.markdown("---")
 
 # 4. TABELA DE AUDITORIA E VISUALIZAÇÃO GERAL DA BASE
 st.markdown('<div class="section-header">Base de Dados Completa (Modo de Exibição e Auditoria)</div>', unsafe_allow_html=True)
-st.data_editor(df_v, hide_index=True, width='stretch', key="editor_corporativo_admin_v2")
+
+# Configuração para forçar a exibição correta como campo de texto na tabela interativa
+cfg_tabela = {"data": st.column_config.TextColumn("Data", required=True)}
+
+df_v_editado = st.data_editor(df_v, column_config=cfg_tabela, hide_index=True, width='stretch', key="editor_corporativo_admin_v3")
+
+if st.button("Salvar Modificações Diretas da Tabela", width='content'):
+    rp.update_file("dados_logistica.csv", "Tabela Manual Update", df_v_editado.to_csv(index=False), rp.get_contents("dados_logistica.csv").sha)
+    st.success("Modificações salvas diretamente no arquivo base.")
+    st.rerun()
