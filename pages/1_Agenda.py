@@ -60,7 +60,7 @@ df_o_at = pd.DataFrame(dados_obs)
 
 st.markdown('<div class="section-header">Observações Semanais Operacionais</div>', unsafe_allow_html=True)
 cfg_col = {"dia": st.column_config.TextColumn("Dia da Semana", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Instruções / Observações", width="large", disabled=False)}
-df_o_edit = st.data_editor(df_o_at, column_config=cfg_col, hide_index=True, width='stretch', row_height=100, key="ed_obs_v_corp_final_v9")
+df_o_edit = st.data_editor(df_o_at, column_config=cfg_col, hide_index=True, width='stretch', row_height=100, key="ed_obs_corp_v10")
 
 if st.button("Salvar Alterações das Observações", width='stretch'):
     rp.update_file("observacoes.csv", "Update Obs", df_o_edit.to_csv(index=False), rp.get_contents("observacoes.csv").sha)
@@ -109,23 +109,28 @@ df_pl = df_lp[t_str == "pontes e lacerda x cuiaba"].rename(columns=n_col)
 df_cp = df_lp[t_str == "cuiaba x pontes e lacerda"].rename(columns=n_col)
 df_out = df_lp[(t_str != "pontes e lacerda x cuiaba") & (t_str != "cuiaba x pontes e lacerda")].rename(columns=n_col)
 
-# 6. GERADOR DE PLANILHA EXCEL EXCLUSIVA (MÉTODO 100% PROTEGIDO CONTRA ERROS DE SINTAXE)
-buffer = io.BytesIO()
-with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-    df_o_edit.rename(columns={"dia": "Dia da Semana", "data": "Data", "observacao": "Observações"}).to_excel(writer, sheet_name="Observações Semanais", index=False)
-    df_pl.to_excel(writer, sheet_name="PL x Cuiabá", index=False)
-    df_cp.to_excel(writer, sheet_name="Cuiabá x PL", index=False)
-    df_out.to_excel(writer, sheet_name="Viagens Especiais", index=False)
+# 6. CONSTRUÇÃO DO DOCUMENTO COMPATÍVEL COM IMPRESSÃO E WHATSAPP (SEM CSS COMPLEXO)
+dt_c = datetime.now(fuso).strftime('%d/%m/%Y às %H:%M')
+df_o_html = df_o_edit.copy()
+df_o_html["observacao"] = df_o_html["observacao"].astype(str).str.replace("\n", "<br>")
+
+doc_final = "<html><body style='font-family:Arial,sans-serif;padding:20px;color:#333;'>"
+doc_final += "<div style='text-align:right;color:#666;font-size:10px;'>Emitido em: " + dt_c + "</div>"
+doc_final += "<h2 style='background-color:#FF7F50;color:white;padding:12px;text-align:center;'>AURA LOGISTICS — AGENDA SEMANAL</h2>"
+doc_final += "<h3 style='background-color:#002D5E;color:white;padding:6px;font-size:12pt;'>OBSERVAÇÕES OPERACIONAIS</h3>" + df_o_html.to_html(index=False, escape=False)
+doc_final += "<h3 style='background-color:#002D5E;color:white;padding:6px;font-size:12pt;'>TRECHO: PONTES E LACERDA X CUIABÁ</h3>" + df_pl.to_html(index=False)
+doc_final += "<h3 style='background-color:#002D5E;color:white;padding:6px;font-size:12pt;'>TRECHO: CUIABÁ X PONTES E LACERDA</h3>" + df_cp.to_html(index=False)
+doc_final += "</body></html>"
 
 st.download_button(
-    label="📊 Baixar Agenda Completa Corporativa (Planilha Excel)", 
-    data=buffer.getvalue(), 
-    file_name="agenda_AURA_semanal.xlsx", 
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    label="📄 Baixar Relatório de Agenda Formatado (HTML/PDF)", 
+    data=doc_final, 
+    file_name="agenda_AURA_semanal.html", 
+    mime="text/html", 
     width='stretch'
 )
 
-# 7. EXIBIÇÃO DAS TABELAS NA TELA COM OS HEADERS AZUIS DA AURA ORIGINAIS
+# 7. EXIBIÇÃO DAS TABELAS NA TELA
 st.markdown('<div class="treche-header">Trecho: Pontes e Lacerda x Cuiabá</div>', unsafe_allow_html=True)
 st.dataframe(df_pl, width='stretch', hide_index=True)
 
