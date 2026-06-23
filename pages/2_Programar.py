@@ -3,92 +3,116 @@ import pandas as pd
 from github import Github, Auth
 import io
 from datetime import datetime
+import zoneinfo
 
+# 1. VERIFICAÇÃO DE LOGIN DE USUÁRIO
 if 'logado' not in st.session_state or not st.session_state['logado']:
-    st.session_state['logado'] = False; st.switch_page("main.py")
+    st.session_state['logado'] = False
+    st.switch_page("main.py")
 
-st.set_page_config(page_title="Programar - AURA", layout="wide")
+st.set_page_config(page_title="Programar - AURA LOGISTICS", layout="wide")
 
-st.title("Programar Nova Viagem de Logística")
+# 🎨 ESTILIZAÇÃO CORPORATIVA PROFISSIONAL (SEM EMOJIS)
+st.markdown("""<style>
+    .stApp { background-color: #F8FAFC !important; }
+    .main-title { color: #002D5E !important; font-size: 24pt !important; font-weight: bold; margin-bottom: 5px; }
+    .subtitle { color: #64748B !important; font-size: 11pt !important; margin-bottom: 25px; }
+    .section-header { background-color: #002D5E !important; color: white !important; padding: 8px 15px; font-weight: bold; font-size: 12pt; border-radius: 4px; margin-top: 15px; margin-bottom: 15px; }
+    .subsection-header { color: #002D5E !important; font-weight: bold; font-size: 11pt; margin-top: 15px; margin-bottom: 10px; border-left: 4px solid #FF7F50; padding-left: 8px; }
+</style>""", unsafe_allow_html=True)
 
-dias_traduzidos = {
-    0: "Segunda-Feira", 1: "Terça-Feira", 2: "Quarta-Feira",
-    3: "Quinta-Feira", 4: "Sexta-Feira", 5: "Sábado", 6: "Domingo"
-}
+st.markdown('<div class="main-title">Planejamento e Programação de Viagens</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Abertura de ordens de transporte, alocação de passageiros e provisionamento logístico inicial</div>', unsafe_allow_html=True)
 
-# Campos de preenchimento fora do modo form estático para permitir a atualização dinâmica da tela
-passageiro = st.text_input("Nome do Passageiro:")
-trajeto = st.selectbox("Selecione o Trajeto:", ["Pontes e Lacerda x Cuiabá", "Cuiabá x Pontes e Lacerda", "Outros"])
+# 2. CONEXÃO SEGURA COM O REPOSITÓRIO GITHUB
+tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
+rp = Github(auth=Auth.Token(tk)).get_repo(repo)
 
-# 🔄 INTERFACE INTELIGENTE: O campo abaixo só existe se "Outros" for selecionado
-trajeto_custom = ""
-if trajeto == "Outros":
-    trajeto_custom = st.text_input("Digite qual é o trajeto personalizado:")
+f_log = rp.get_contents("dados_logistica.csv")
+df_v = pd.read_csv(io.StringIO(f_log.decoded_content.decode()))
 
-st.write("### Informações da Viagem")
-data_viagem = st.date_input("Data da Viagem:", datetime.now())
-horario = st.text_input("Horário de Saída/Chegada:")
-saida_local = st.text_input("Local de Saída (Se aplicável):")
+# 3. CAPTURA AUTOMÁTICA DE DATAS E FUSO OPERACIONAL
+fuso = zoneinfo.ZoneInfo("America/Cuiaba")
+hoje = datetime.now(fuso)
+data_hoje = hoje.date()
 
-st.write("### Logística de Voo / Hospedagem")
-cia_voo = st.text_input("Cia / Nº do Voo:")
-horario_voo = st.text_input("Horário do Voo:")
-data_voo = st.date_input("Data do Voo:", value=None)
-hotel_cuiaba = st.text_input("Hotel em Cuiabá (Se houver):")
-hospedagem_lacerda = st.text_input("Hospedagem em P. Lacerda (Se houver):")
-motorista = st.text_input("Nome do Motorista Designado:")
+# 4. FORMULÁRIO OPERACIONAL DIVIDIDO EM SEÇÕES
+st.markdown('<div class="section-header">Dados Cadastrais Básicos</div>', unsafe_allow_html=True)
 
-st.write("### Detalhamento Financeiro (Apenas para o Dashboard)")
-c1, c2, c3, c4 = st.columns(4)
-c_hotel = c1.text_input("Hotel (R$):", value="0.00")
-c_aereo = c2.text_input("Aéreo (R$):", value="0.00")
-c_transfer = c3.text_input("Transfer (R$):", value="0.00")
-c_outros = c4.text_input("Outros Custos (R$):", value="0.00")
+col_p, col_m, col_d = st.columns(3)
+p_nome = col_p.text_input("Nome do Passageiro")
+m_nome = col_m.selectbox("Motorista Designado", ["Ilson", "Particular", "Outro Profissional"])
+d_viagem = col_d.date_input("Data da Viagem", data_hoje)
+
+col_t, col_h, col_s = st.columns(3)
+t_escolha = col_t.selectbox("Trajeto Obrigatório", ["Pontes e Lacerda x Cuiabá", "Cuiabá x Pontes e Lacerda", "Outros"])
+h_saida = col_h.text_input("Horário Estimado de Saída (HH:MM)")
+s_semana = col_s.selectbox("Dia da Semana Correspondente", ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"])
+
+# SEÇÃO DE PROVISIONAMENTO DE VOOS
+st.markdown('<div class="section-header">Provisionamento de Transporte Aéreo</div>', unsafe_allow_html=True)
+c_voo = st.checkbox("Esta programação envolve trecho com passagem aérea aérea?")
+
+v_cia, v_horario, v_data = "", "", ""
+if c_voo:
+    col_a1, col_a2, col_a3 = st.columns(3)
+    v_cia = col_a1.text_input("Companhia e Número do Voo")
+    v_horario = col_a2.text_input("Horário do Voo (HH:MM)")
+    v_data_input = col_a3.date_input("Data do Voo", data_hoje)
+    v_data = v_data_input.strftime('%d/%m/%Y')
+
+# SEÇÃO DE PROVISIONAMENTO DE HOSPEDAGENS
+st.markdown('<div class="section-header">Provisionamento de Hospedagem</div>', unsafe_allow_html=True)
+c_hotel = st.checkbox("Esta programação exige reserva de hotel em Cuiabá?")
+
+h_nome = ""
+if c_hotel:
+    h_nome = st.text_input("Nome do Estabelecimento / Hotel indicado")
 
 st.markdown("---")
-enviar = st.button("Gravar e Sincronizar Programação", use_container_width=True)
 
-if enviar:
-    if not passageiro.strip():
-        st.error("Por favor, preencha o nome do passageiro.")
-    elif trajeto == "Outros" and not trajeto_custom.strip():
-        st.error("Por favor, especifique o trajeto personalizado no campo que apareceu.")
+# 5. PROCESSAMENTO E PERSISTÊNCIA DOS DADOS NO GITHUB
+if st.button("Consolidar e Registrar Programação", width='stretch'):
+    if not p_nome.strip():
+        st.error("Erro: O preenchimento do nome do passageiro é obrigatório para prosseguir.")
     else:
-        try:
-            tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
-            rp = Github(auth=Auth.Token(tk)).get_repo(repo)
-            
-            file_content = rp.get_contents("dados_logistica.csv")
-            df_atual = pd.read_csv(io.StringIO(file_content.decoded_content.decode()))
-            
-            trajeto_final = trajeto_custom.strip() if trajeto == "Outros" else trajeto
-            semana_calculada = dias_traduzidos[data_viagem.weekday()]
-            
-            nova_viagem = {
-                "passageiro": passageiro.strip(),
-                "trajeto": trajeto_final.strip(),
-                "semana": semana_calculada,
-                "data": data_viagem.strftime('%d/%m/%Y'),
-                "horário": horario.strip(),
-                "saída": saida_local.strip(),
-                "cia/nº voo": cia_voo.strip(),
-                "horário do voo": horario_voo.strip(),
-                "data do voo": data_voo.strftime('%d/%m/%Y') if data_voo else "",
-                "hotel em cuiabá": hotel_cuiaba.strip(),
-                "hospedagem em p. lacerda": hospedagem_lacerda.strip(),
-                "hotel (r$)": c_hotel.strip(),
-                "aéreo (r$)": c_aereo.strip(),
-                "transfer (r$)": c_transfer.strip(),
-                "outros (r$)": c_outros.strip(),
-                "motorista": motorista.strip()
-            }
-            
-            df_nova = pd.DataFrame([nova_viagem])
-            df_final = pd.concat([df_atual, df_nova], ignore_index=True)
-            
-            rp.update_file("dados_logistica.csv", "Nova viagem cadastrada", df_final.to_csv(index=False), file_content.sha)
-            st.success("Sucesso! Registro salvo e sincronizado.")
-            st.rerun()
-            
-        except Exception as e:
-            st.error(f"Erro ao salvar no banco de dados: {e}")
+        # Padroniza as colunas da planilha para letras minúsculas estruturadas
+        df_v.columns = df_v.columns.str.strip().str.lower()
+        df_v.columns = df_v.columns.str.replace("á", "a").str.replace("í", "i").str.replace("º", "")
+        df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+
+        # Criação do registro limpo e estruturado
+        novo_registro = {
+            "passageiro": p_nome.strip(),
+            "motorista": m_nome,
+            "semana": s_semana,
+            "data": d_viagem.strftime('%d/%m/%Y'),
+            "horario": h_saida.strip(),
+            "saida": "Logística",
+            "trajeto": t_escolha,
+            "cia/n voo": v_cia.strip(),
+            "horario do vuo": v_horario.strip(),
+            "data do vuo": v_data,
+            "hotel em cuiaba": h_nome.strip(),
+            "status": "Confirmado",
+            "centro_custo": "210301 - Moagem",
+            "hotel_v": "0.00",
+            "comb_v": "0.00",
+            "aereo_v": "0.00",
+            "outros_v": "0.00",
+            "total": "0.00",
+            "voo": ""
+        }
+
+        # Concatena e atualiza diretamente no repositório GitHub de forma limpa
+        df_final = pd.concat([df_v, pd.DataFrame([novo_registro])], ignore_index=True)
+        rp.update_file("dados_logistica.csv", "New Trip Reservation Entry via Programar", df_final.to_csv(index=False), f_log.sha)
+        st.success("Programação registrada com sucesso na base de dados corporativa."); st.rerun()
+
+st.markdown("---")
+
+# 6. HISTÓRICO RECENTE EM MODO DE LEITURA
+st.markdown('<div class="subsection-header">Últimas Programações Registradas em Sistema</div>', unsafe_allow_html=True)
+df_v_display = df_v.copy()
+df_v_display.columns = df_v_display.columns.str.upper()
+st.dataframe(df_v_display.tail(10), width='stretch', hide_index=True)
