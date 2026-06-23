@@ -59,8 +59,27 @@ for i, dia in enumerate(dias_s):
 df_o_at = pd.DataFrame(dados_obs)
 
 st.markdown('<div class="section-header">Observações Semanais Operacionais</div>', unsafe_allow_html=True)
-cfg_col = {"dia": st.column_config.TextColumn("Dia da Semana", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Instruções / Observações", width="large", disabled=False)}
-df_o_edit = st.data_editor(df_o_at, column_config=cfg_col, hide_index=True, width='stretch', row_height=100, key="ed_obs_corp_v10")
+
+# 🛠️ AJUSTE CRÍTICO: Configuração da coluna com suporte para texto longo multilinha expansível
+cfg_col = {
+    "dia": st.column_config.TextColumn("Dia da Semana", disabled=True), 
+    "data": st.column_config.TextColumn("Data", disabled=True), 
+    "observacao": st.column_config.TextColumn(
+        "Instruções / Observações (Dê duplo clique para expandir textas longas)", 
+        width="large", 
+        disabled=False
+    )
+}
+
+# row_height=130 dá mais espaço vertical nativo para as 3 linhas aparecerem de imediato
+df_o_edit = st.data_editor(
+    df_o_at, 
+    column_config=cfg_col, 
+    hide_index=True, 
+    width='stretch', 
+    row_height=130, 
+    key="ed_obs_corp_v11"
+)
 
 if st.button("Salvar Alterações das Observações", width='stretch'):
     rp.update_file("observacoes.csv", "Update Obs", df_o_edit.to_csv(index=False), rp.get_contents("observacoes.csv").sha)
@@ -88,7 +107,7 @@ if st.button("Atualizar Status do Registro Selecionado", width='stretch'):
         idx = int(v_sel.split(" - ")[0])
         df_v.at[idx, "status"] = n_st
         rp.update_file("dados_logistica.csv", "Status Update", df_v.to_csv(index=False), f_log.sha)
-        st.success("Status atualizado com sucesso."); st.rerun()
+        st.success("Status updated."); st.rerun()
 
 st.markdown("---")
 
@@ -109,7 +128,7 @@ df_pl = df_lp[t_str == "pontes e lacerda x cuiaba"].rename(columns=n_col)
 df_cp = df_lp[t_str == "cuiaba x pontes e lacerda"].rename(columns=n_col)
 df_out = df_lp[(t_str != "pontes e lacerda x cuiaba") & (t_str != "cuiaba x pontes e lacerda")].rename(columns=n_col)
 
-# 6. CONSTRUÇÃO DO DOCUMENTO COMPATÍVEL COM IMPRESSÃO E WHATSAPP (SEM CSS COMPLEXO)
+# 6. CONSTRUÇÃO DO DOCUMENTO HTML
 dt_c = datetime.now(fuso).strftime('%d/%m/%Y às %H:%M')
 df_o_html = df_o_edit.copy()
 df_o_html["observacao"] = df_o_html["observacao"].astype(str).str.replace("\n", "<br>")
