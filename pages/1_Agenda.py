@@ -5,6 +5,7 @@ import io
 from datetime import datetime, timedelta
 import zoneinfo
 
+# 1. VERIFICAÇÃO DE LOGIN DE USUÁRIO
 if 'logado' not in st.session_state or not st.session_state['logado']:
     st.session_state['logado'] = False
     st.switch_page("main.py")
@@ -23,6 +24,7 @@ st.markdown("""<style>
 st.markdown('<div class="main-title">Agenda Semanal de Transporte</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Visualização integrada de trechos, programações confirmadas e orientações para motoristas</div>', unsafe_allow_html=True)
 
+# 2. CONEXÃO GITHUB
 tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
 rp = Github(auth=Auth.Token(tk)).get_repo(repo)
 
@@ -33,6 +35,7 @@ df_o = pd.read_csv(io.StringIO(rp.get_contents("observacoes.csv").decoded_conten
 df_o.columns = df_o.columns.str.strip().str.lower()
 df_o = df_o.loc[:, ~df_o.columns.duplicated()]
 
+# 3. CONTROLE DE DATAS DA SEMANA
 fuso = zoneinfo.ZoneInfo("America/Cuiaba")
 hoje_f = datetime.now(fuso).date()
 
@@ -41,4 +44,93 @@ data_sel = st.date_input("Visualizar agenda a partir do dia:", value=hoje_f)
 
 segunda = data_sel - timedelta(days=data_sel.weekday())
 dias_s = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
-datas_s =
+datas_s = [(segunda + timedelta(days=i)).strftime('%d/%m/%Y') for i in range(7)]
+
+try: data_salva = str(df_o.iloc[0]["data"]).strip()
+except: data_salva = ""
+
+obs_dict = {}
+if data_salva == datas_s[0]:
+    obs_dict = dict(zip(df_o["dia"].str.strip().str.lower(), df_o["observacao"].fillna("")))
+
+dados_obs = []
+for i, dia in enumerate(dias_s):
+    dados_obs.append({"dia": dia, "data": datas_s[i], "observacao": obs_dict.get(dia.lower(), "")})
+df_o_at = pd.DataFrame(dados_obs)
+
+st.markdown('<div class="section-header">Observações Semanais Operacionais</div>', unsafe_allow_html=True)
+cfg_col = {"dia": st.column_config.TextColumn("Dia da Semana", disabled=True), "data": st.column_config.TextColumn("Data", disabled=True), "observacao": st.column_config.TextColumn("Instruções / Observações", width="large", disabled=False)}
+df_o_edit = st.data_editor(df_o_at, column_config=cfg_col, hide_index=True, width='stretch', row_height=100, key="ed_obs_v_corp_final_v9")
+
+if st.button("Salvar Alterações das Observações", width='stretch'):
+    rp.update_file("observacoes.csv", "Update Obs", df_o_edit.to_csv(index=False), rp.get_contents("observacoes.csv").sha)
+    st.success("Alterações salvas com sucesso."); st.rerun()
+
+st.markdown("---")
+
+# 4. TRATAMENTO DOS DADOS DE VIAGEM
+df_v.columns = df_v.columns.str.strip().str.lower()
+df_v.columns = df_v.columns.str.replace("á", "a").str.replace("í", "i").str.replace("º", "")
+df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+
+if "status" not in df_v.columns: df_v["status"] = "Confirmado"
+df_v["status"] = df_v["status"].fillna("Confirmado").astype(str).str.strip()
+df_v = df_v.fillna("").astype(str)
+
+st.write("### Gerenciamento de Status")
+lista_g = [f"{i} - {row['passageiro']} ({row['data']}) [{row['status']}]" for i, row in df_v.iterrows() if str(row['passageiro']).strip() != ""]
+col_s, col_st = st.columns([2, 1])
+v_sel = col_s.selectbox("Selecione a viagem para alteração de status:", options=[""] + lista_g)
+n_st = col_st.selectbox("Novo status:", ["Confirmado", "Cancelado", "Ocultado"])
+
+if st.button("Atualizar Status do Registro Selecionado", width='stretch'):
+    if v_sel:
+        idx = int(v_sel.split(" - ")[0])
+        df_v.at[idx, "status"] = n_st
+        rp.update_file("dados_logistica.csv", "Status Update", df_v.to_csv(index=False), f_log.sha)
+        st.success("Status atualizado com sucesso."); st.rerun()
+
+st.markdown("---")
+
+# 5. FILTRAGEM DOS TRECHOS
+df_vis = df_v[df_v["status"] == "Confirmado"]
+df_sem = df_vis[df_vis["data"].isin(datas_s)]
+
+p_filter = st.multiselect("Filtrar visualização por Passageiro:", options=sorted(list(df_sem["passageiro"].unique())))
+df_ex = df_sem[df_sem['passageiro'].isin(p_filter)] if p_filter else df_sem
+
+cols_ok = [c for c in df_ex.columns if "r$" not in c and "custo" not in c and "valor" not in c and "status" not in c]
+df_lp = df_ex[cols_ok]
+
+n_col = {"passageiro": "Passageiro", "trajeto": "Trajeto", "semana": "Semana", "data": "Data", "horario": "Horário", "saida": "Saída", "cia/n voo": "Cia/Nº Voo", "horario do vuo": "Horário do Voo", "data do vuo": "Data do Voo", "hotel em cuiaba": "Hotel em Cuiabá", "hotel cuiaba": "Hotel Cuiabá", "motorista": "Motorista"}
+t_str = df_lp['trajeto'].str.strip().str.lower().str.replace("á", "a")
+
+df_pl = df_lp[t_str == "pontes e lacerda x cuiaba"].rename(columns=n_col)
+df_cp = df_lp[t_str == "cuiaba x pontes e lacerda"].rename(columns=n_col)
+df_out = df_lp[(t_str != "pontes e lacerda x cuiaba") & (t_str != "cuiaba x pontes e lacerda")].rename(columns=n_col)
+
+# 6. GERADOR DE PLANILHA EXCEL EXCLUSIVA (MÉTODO 100% PROTEGIDO CONTRA ERROS DE SINTAXE)
+buffer = io.BytesIO()
+with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+    df_o_edit.rename(columns={"dia": "Dia da Semana", "data": "Data", "observacao": "Observações"}).to_excel(writer, sheet_name="Observações Semanais", index=False)
+    df_pl.to_excel(writer, sheet_name="PL x Cuiabá", index=False)
+    df_cp.to_excel(writer, sheet_name="Cuiabá x PL", index=False)
+    df_out.to_excel(writer, sheet_name="Viagens Especiais", index=False)
+
+st.download_button(
+    label="📊 Baixar Agenda Completa Corporativa (Planilha Excel)", 
+    data=buffer.getvalue(), 
+    file_name="agenda_AURA_semanal.xlsx", 
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    width='stretch'
+)
+
+# 7. EXIBIÇÃO DAS TABELAS NA TELA COM OS HEADERS AZUIS DA AURA ORIGINAIS
+st.markdown('<div class="treche-header">Trecho: Pontes e Lacerda x Cuiabá</div>', unsafe_allow_html=True)
+st.dataframe(df_pl, width='stretch', hide_index=True)
+
+st.markdown('<div class="treche-header">Trecho: Cuiabá x Pontes e Lacerda</div>', unsafe_allow_html=True)
+st.dataframe(df_cp, width='stretch', hide_index=True)
+
+st.markdown('<div class="treche-header">Outros Trajetos e Viagens Especiais</div>', unsafe_allow_html=True)
+st.dataframe(df_out, width='stretch', hide_index=True)
