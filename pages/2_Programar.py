@@ -12,7 +12,7 @@ if 'logado' not in st.session_state or not st.session_state['logado']:
 
 st.set_page_config(page_title="Programar Transporte - AURA LOGISTICS", layout="wide")
 
-# CSS DA TELA (SEGURO CONTRA ERROS DO PYTHON 3.14)
+# CSS DA TELA
 css_tela = "<style>"
 css_tela += ".stApp { background-color: #F8FAFC !important; }"
 css_tela += ".main-title { color: #1b294b !important; font-size: 24pt !important; font-weight: bold; margin-bottom: 5px; }"
@@ -32,7 +32,6 @@ rp = Github(auth=Auth.Token(tk)).get_repo(repo)
 f_log = rp.get_contents("dados_logistica.csv")
 df_v = pd.read_csv(io.StringIO(f_log.decoded_content.decode()))
 
-# Lista de dias da semana para cálculo automático
 dias_semana_pt = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
 fuso = zoneinfo.ZoneInfo("America/Cuiaba")
 hoje = datetime.now(fuso).date()
@@ -50,11 +49,17 @@ with col_geral1:
     ])
 
 with col_geral2:
-    # O Centro de Custo é obrigatório aqui, mas a Agenda já está programada para ocultá-lo da visão geral
-    centro_custo = st.text_input("Centro de Custo (Oculto na Agenda):", key="prog_cc").strip()
+    # 🌟 AQUI ESTÁ A LISTA SUSPENSA DE CENTRO DE CUSTO (Substitua pelos seus dados)
+    lista_centros_custo = [
+        "Selecione...",
+        "G3 - Operação de Mina",
+        "Administração",
+        "Logística",
+        "Engenharia"
+    ]
+    centro_custo = st.selectbox("Centro de Custo (Oculto na Agenda):", options=lista_centros_custo, key="prog_cc")
     motorista = st.text_input("Motorista Designado:", key="prog_motorista").strip()
 
-# Formulários dinâmicos baseados no Trajeto selecionado
 if trajeto == "Pontes e Lacerda x Cuiabá":
     st.markdown('<div class="section-header">Logística: Saída de Pontes e Lacerda para Cuiabá</div>', unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
@@ -69,7 +74,6 @@ if trajeto == "Pontes e Lacerda x Cuiabá":
         voo_hora = st.text_input("Horário do Voo (Se houver):", key="pl_voo_hora")
         voo_data = st.date_input("Data do Voo (Se houver):", value=hoje, key="pl_voo_data")
 
-    # Automação do Dia da Semana
     dia_semana_calculado = dias_semana_pt[data_ida.weekday()]
     st.caption("📅 Dia da semana detectado automaticamente: **" + dia_semana_calculado + "**")
 
@@ -90,7 +94,6 @@ elif trajeto == "Cuiabá x Pontes e Lacerda":
         voo_hora = ""
         voo_data = hoje
 
-    # Automação do Dia da Semana para Ida e Retorno
     dia_semana_calculado = dias_semana_pt[data_ida.weekday()]
     dia_semana_ret_calculado = dias_semana_pt[data_ret.weekday()]
     st.caption("📅 Dia de Saída p/ PL: **" + dia_semana_calculado + "** | Dia de Chegada do Voo: **" + dia_semana_ret_calculado + "**")
@@ -113,16 +116,17 @@ else:
 
 st.markdown("---")
 
-# 4. SALVAMENTO DOS DADOS ALINHADO COM A AGENDA
+# 4. SALVAMENTO DOS DADOS (Com trava de segurança para o Centro de Custo)
 if st.button("🚀 Confirmar e Programar Transporte", width='stretch'):
     if not passageiro:
         st.error("Por favor, preencha o nome do Passageiro.")
+    elif centro_custo == "Selecione...":
+        st.error("Por favor, selecione um Centro de Custo válido na lista suspensa.")
     else:
-        # Cria a nova linha mapeando exatamente os nomes das colunas que a base possui
         nova_linha = {
             "centro_custo": centro_custo,
             "passageiro": passageiro,
-            "trajeto": trajeto.lower(), # Salva em minúsculo para bater com os filtros da agenda
+            "trajeto": trajeto.lower(), 
             "status": "Confirmado",
             "motorista": motorista,
             "semana": dias_semana_pt[data_ida.weekday()],
@@ -135,18 +139,15 @@ if st.button("🚀 Confirmar e Programar Transporte", width='stretch'):
             "data do voo": voo_data.strftime('%d/%m/%Y') if isinstance(voo_data, datetime) or hasattr(voo_data, 'strftime') else ""
         }
         
-        # Se for o trecho de Cuiabá, alimenta os campos específicos de retorno também
         if trajeto == "Cuiabá x Pontes e Lacerda":
             nova_linha["semana_ret"] = dias_semana_pt[data_ret.weekday()]
             nova_linha["data_ret"] = data_ret.strftime('%d/%m/%Y')
             nova_linha["horario_ret"] = horario_ret
             nova_linha["hotel cuiaba"] = hotel_cuiaba
 
-        # Converte para DataFrame e faz o Append seguro na base existente
         df_nova_row = pd.DataFrame([nova_linha])
         df_final_salvar = pd.concat([df_v, df_nova_row], ignore_index=True)
         
-        # Envia de volta para o GitHub
         conteudo_csv = df_final_salvar.to_csv(index=False)
         rp.update_file("dados_logistica.csv", "Nova Programacao Automatizada", conteudo_csv, f_log.sha)
         
