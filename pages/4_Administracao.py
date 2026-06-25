@@ -3,6 +3,8 @@ import pandas as pd
 from github import Github, Auth
 import io
 from datetime import datetime
+import string
+import random
 
 # 1. VERIFICAÇÃO DE LOGIN
 if 'logado' not in st.session_state or not st.session_state['logado']:
@@ -105,7 +107,6 @@ with tab1:
             except:
                 def_data = datetime.now().date()
                 
-        # 🌟 ALINHAMENTO CORRIGIDO (FORA DO BlOCO EXCEPT DA DATA)
         t_val = str(row_edit.get('trajeto', 'Pontes e Lacerda x Cuiabá')).strip().lower()
         if "cuiaba x pontes e lacerda" in t_val or "cuiabá x pontes e lacerda" in t_val: 
             def_traj = "Cuiabá x Pontes e Lacerda"
@@ -196,21 +197,44 @@ with tab2:
     with st.form("form_novo_usuario"):
         st.write("### Cadastrar Novo Usuário Administrativo")
         new_user = st.text_input("Nome de Usuário (Login):").strip()
-        new_pass = st.text_input("Senha de Acesso:", type="password").strip()
+        
+        # Lógica do Gerador Automático
+        c_auto, c_manual = st.columns([1, 2])
+        with c_auto:
+            gerar_auto = st.checkbox("🎲 Gerar senha automaticamente", value=True)
+        with c_manual:
+            new_pass = st.text_input("Senha de Acesso (Manual):", type="password", disabled=gerar_auto, help="Desmarque a caixa ao lado para digitar uma senha manual.").strip()
+            
         btn_user = st.form_submit_button("🔐 Adicionar Novo Usuário")
         
         if btn_user:
-            if not new_user or not new_pass:
-                st.error("Por favor, preencha o usuário e a senha.")
+            senha_final = new_pass
+            
+            if gerar_auto:
+                caracteres = string.ascii_letters + string.digits + "@#$"
+                senha_final = ''.join(random.choice(caracteres) for i in range(8))
+                
+            if not new_user:
+                st.error("Por favor, preencha o nome de usuário.")
+            elif not gerar_auto and not senha_final:
+                st.error("Por favor, digite uma senha ou marque para gerar automaticamente.")
             elif new_user.lower() in df_u['usuario'].astype(str).str.lower().values:
                 st.error("Este usuário já está cadastrado no sistema!")
             else:
-                new_row = pd.DataFrame([{"usuario": new_user, "senha": new_pass}])
+                new_row = pd.DataFrame([{"usuario": new_user, "senha": senha_final}])
                 df_u_final = pd.concat([df_u, new_row], ignore_index=True)
+                
                 f_user_current = rp.get_contents("usuarios.csv")
                 rp.update_file("usuarios.csv", "Novo usuario adicionado via painel", df_u_final.to_csv(index=False), f_user_current.sha)
-                st.success(f"Usuário '{new_user}' cadastrado com sucesso!")
-                st.rerun()
+                
+                # Atualiza em memória para a tabela exibir sem precisar atualizar a página inteira (assim a senha não some)
+                df_u = df_u_final 
+                
+                if gerar_auto:
+                    st.success(f"✅ Usuário **{new_user}** criado com sucesso!")
+                    st.info(f"🔑 **Senha gerada:** `{senha_final}`  \n*(Copie esta senha agora, pois ela não será exibida novamente!)*")
+                else:
+                    st.success(f"✅ Usuário '{new_user}' cadastrado com sucesso!")
                 
     st.write("### Usuários com Acesso Ativo")
     st.dataframe(df_u, use_container_width=True)
