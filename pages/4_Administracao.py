@@ -11,7 +11,7 @@ if 'logado' not in st.session_state or not st.session_state['logado']:
 
 st.set_page_config(page_title="Painel Administrativo - AURA LOGISTICS", layout="wide")
 
-# CSS DA TELA
+# CSS DO ECRÃ
 css_tela = """<style>
 .stApp { background-color: #F8FAFC !important; }
 .main-title { color: #1b294b !important; font-size: 24pt !important; font-weight: bold; margin-bottom: 5px; }
@@ -21,7 +21,7 @@ css_tela = """<style>
 st.markdown(css_tela, unsafe_allow_html=True)
 
 st.markdown('<div class="main-title">Painel Administrativo de Logística</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Gerenciamento centralizado de registros, trajetos, controle financeiro e credenciais de acesso</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Gerenciamento centralizado de registos, trajetos, controle financeiro e credenciais de acesso</div>', unsafe_allow_html=True)
 
 # 2. CONEXÃO GITHUB
 tk = st.secrets["GITHUB_TOKEN"]
@@ -36,19 +36,20 @@ df_v.columns = df_v.columns.str.strip().str.lower()
 df_v = df_v.loc[:, ~df_v.columns.duplicated()]
 
 # 3. ABAS DO PAINEL
-tab1, tab2 = st.tabs(["Registro Completo de Custos", "Gestão Corporativa de Usuários"])
+tab1, tab2 = st.tabs(["Registo Completo de Custos", "Gestão Corporativa de Usuários"])
 
 with tab1:
-    st.markdown('<div class="section-header">Inserir ou Alterar Registro Operacional</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Inserir ou Alterar Registo Operacional</div>', unsafe_allow_html=True)
 
-    # 🌟 A MÁGICA DA EDIÇÃO: SELETOR DE REGISTROS
-    lista_opcoes = ["➕ CRIAR NOVO REGISTRO"]
+    # 🌟 A MÁGICA DA EDIÇÃO: SELETOR DE REGISTOS
+    lista_opcoes = ["➕ CRIAR NOVO REGISTO"]
     for i, row in df_v.iterrows():
         pass_name = str(row.get('passageiro', 'Sem Nome'))
         date_val = str(row.get('data', ''))
         lista_opcoes.append(f"{i} - {pass_name} ({date_val})")
 
-    registro_sel = st.selectbox("🔎 Selecione um registro para ALTERAR ou deixe na primeira opção para CRIAR NOVO:", options=lista_opcoes)
+    # Esta é a caixa que estava a faltar no seu ecrã!
+    registro_sel = st.selectbox("🔎 Selecione um registo para ALTERAR ou deixe na primeira opção para CRIAR NOVO:", options=lista_opcoes)
 
     # Variáveis Padrão
     idx_edit = None
@@ -168,12 +169,12 @@ with tab1:
                 # É NOVO REGISTRO
                 df_novo = pd.DataFrame([nova_linha])
                 df_v = pd.concat([df_v, df_novo], ignore_index=True)
-                msg_sucesso = "Novo registro criado com sucesso!"
+                msg_sucesso = "Novo registo criado com sucesso!"
             else:
                 # É EDIÇÃO: Atualiza apenas a linha certa!
                 for k, v in nova_linha.items():
                     df_v.at[idx_edit, k] = v
-                msg_sucesso = "Registro atualizado com sucesso!"
+                msg_sucesso = "Registo atualizado com sucesso!"
 
             rp.update_file("dados_logistica.csv", "Admin Painel Update", df_v.to_csv(index=False), f_log.sha)
             st.success(msg_sucesso)
