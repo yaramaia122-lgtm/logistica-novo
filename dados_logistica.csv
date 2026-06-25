@@ -2,3 +2,4 @@ passageiro,motorista,data,hora_saida,trajeto,status,centro_custo,hotel_v,comb_v,
 YARA MAIA CHAVES,Ilson,11/12/2026,,Pontes e Lacerda x Cuiabá,Cancelado,210301 - Moagem,5000.0,3000.0,3000.0,0.0,11000.0,,,,,Sexta-Feira,15:00,AEROPORTO,LATAM 1112,15H00,12/06,AEROPORTO,AEROPORTO,Sexta-Feira,12/06,06H00,AEROPORTO,,
 YARA MAIA CHAVES,Ilson,26/06/2026,,Pontes e Lacerda x Cuiabá,Confirmado,210301 - Moagem,0.0,0.0,0.0,0.0,0.0,,,,,Sexta-Feira,15:00,Logística,Azul 5555,,,Aeroporto,,,,,,15h00,26/06/2026
 YARA MAIA CHAVES,Ilson,27/06/2026,,Cuiabá x Pontes e Lacerda,Confirmado,210301 - Moagem,0.0,0.0,0.0,0.0,0.0,,,,,Sexta-Feira,15:00,Logística,Azul 5555,,,Aeroporto,,,,,,15h00,27/06/2026
+YARA,Ilson,25/06/2026,,Pontes e Lacerda x Cuiabá,Cancelado,210301 - Moagem,0.00,0.00,0.00,0.00,0.00,,,,,,,,,,,,,,,,,,
