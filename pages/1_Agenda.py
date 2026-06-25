@@ -104,4 +104,149 @@ if p_filter:
 else:
     df_ex = df_sem
 
-# Função auxiliar
+# Função auxiliar para resgatar colunas independente de como foram cadastradas
+def get_col(df, options):
+    for o in options:
+        if o in df.columns:
+            return df[o].fillna("").astype(str)
+    return pd.Series([""] * len(df), index=df.index)
+
+if 'trajeto' in df_ex.columns:
+    t_str = df_ex['trajeto'].str.strip().str.lower().str.replace("á", "a")
+else:
+    t_str = pd.Series([""] * len(df_ex), index=df_ex.index)
+
+df_pl_raw = df_ex[t_str == "pontes e lacerda x cuiaba"]
+df_cp_raw = df_ex[t_str == "cuiaba x pontes e lacerda"]
+df_out_raw = df_ex[(t_str != "pontes e lacerda x cuiaba") & (t_str != "cuiaba x pontes e lacerda")]
+
+# Montagem Fiel da Tabela 1: Pontes e Lacerda x Cuiabá
+dict_pl = {
+    ('', 'Passageiro'): get_col(df_pl_raw, ['passageiro']),
+    ('Saída de Pontes e Lacerda', 'semana'): get_col(df_pl_raw, ['semana']),
+    ('Saída de Pontes e Lacerda', 'data'): get_col(df_pl_raw, ['data']),
+    ('Saída de Pontes e Lacerda', 'horário'): get_col(df_pl_raw, ['horario', 'hora_saida']),
+    ('Saída de Pontes e Lacerda', 'saída'): get_col(df_pl_raw, ['saida']),
+    ('Chegada em Cuiabá', 'Cia/nº voo'): get_col(df_pl_raw, ['cia/n voo', 'voo', 'cia/n_voo']),
+    ('Chegada em Cuiabá', 'Horário do Voo'): get_col(df_pl_raw, ['horario do voo', 'horario do vuo', 'voo_hora']),
+    ('Chegada em Cuiabá', 'Data do Voo'): get_col(df_pl_raw, ['data do voo', 'data do vuo']),
+    ('Chegada em Cuiabá', 'Destino'): get_col(df_pl_raw, ['destino', 'hotel em cuiaba']),
+    ('', 'Motorista'): get_col(df_pl_raw, ['motorista'])
+}
+df_pl = pd.DataFrame(dict_pl)
+
+# Montagem Fiel da Tabela 2: Cuiabá x Pontes e Lacerda
+dict_cp = {
+    ('', 'Passageiro'): get_col(df_cp_raw, ['passageiro']),
+    ('Chegada em Cuiabá', 'semana'): get_col(df_cp_raw, ['semana_ret']),
+    ('Chegada em Cuiabá', 'data'): get_col(df_cp_raw, ['data_ret']),
+    ('Chegada em Cuiabá', 'horário'): get_col(df_cp_raw, ['horario_ret', 'chegada do voo', 'horario chegada']),
+    ('Chegada em Cuiabá', 'Cia/nº voo'): get_col(df_cp_raw, ['cia/n voo', 'voo']),
+    ('Chegada em Cuiabá', 'Hotel Cuiabá'): get_col(df_cp_raw, ['hotel cuiaba', 'hotel em cuiaba']),
+    ('Saída para Pontes e Lacerda', 'semana'): get_col(df_cp_raw, ['semana']),
+    ('Saída para Pontes e Lacerda', 'data'): get_col(df_cp_raw, ['data']),
+    ('Saída para Pontes e Lacerda', 'horário'): get_col(df_cp_raw, ['horario', 'hora_saida']),
+    ('Saída para Pontes e Lacerda', 'Motorista'): get_col(df_cp_raw, ['motorista']),
+    ('', 'Destino'): get_col(df_cp_raw, ['destino', 'hospedagem . lacerda', 'hospedagem_lacerda', 'hospedagem'])
+}
+df_cp = pd.DataFrame(dict_cp)
+
+# Montagem Tabela 3: Outros
+dict_out = {
+    ('', 'Passageiro'): get_col(df_out_raw, ['passageiro']),
+    ('Saída de Origem', 'semana'): get_col(df_out_raw, ['semana']),
+    ('Saída de Origem', 'data'): get_col(df_out_raw, ['data']),
+    ('Saída de Origem', 'horário'): get_col(df_out_raw, ['horario', 'hora_saida']),
+    ('Saída de Origem', 'saída'): get_col(df_out_raw, ['saida']),
+    ('Chegada', 'Cia/nº voo'): get_col(df_out_raw, ['cia/n voo', 'voo']),
+    ('Chegada', 'Horário do Voo'): get_col(df_out_raw, ['horario do voo', 'voo_hora']),
+    ('Chegada', 'Data do Voo'): get_col(df_out_raw, ['data do voo']),
+    ('Chegada', 'Destino'): get_col(df_out_raw, ['destino']),
+    ('', 'Motorista'): get_col(df_out_raw, ['motorista'])
+}
+df_out = pd.DataFrame(dict_out)
+
+# 🌟 6. GERADOR DE HTML PERSONALIZADO (Cria os cabeçalhos agrupados exatos da imagem)
+def gerar_tabela_html(df, titulo):
+    if df.empty:
+        return f"<div class='titulo-bloco'>{titulo}</div><table style='background:#f4f4f4;'><tr><td>Sem viagens confirmadas.</td></tr></table>"
+    
+    html = f"<div class='titulo-bloco'>{titulo}</div><table><thead><tr>"
+    
+    # Renderiza Linha Superior (Grupos)
+    prev_group = None
+    colspan = 0
+    groups_html = ""
+    for group, col in df.columns:
+        if group != prev_group:
+            if prev_group is not None:
+                groups_html += f"<th colspan='{colspan}'>{prev_group}</th>"
+            prev_group = group
+            colspan = 1
+        else:
+            colspan += 1
+    if prev_group is not None:
+        groups_html += f"<th colspan='{colspan}'>{prev_group}</th>"
+    
+    html += groups_html + "</tr><tr>"
+    
+    # Renderiza Linha Inferior (Colunas)
+    for group, col in df.columns:
+        html += f"<th>{col}</th>"
+    html += "</tr></thead><tbody>"
+    
+    # Renderiza Dados
+    for _, row in df.iterrows():
+        html += "<tr>"
+        for val in row:
+            html += f"<td>{val}</td>"
+        html += "</tr>"
+    html += "</tbody></table>"
+    return html
+
+dt_c = datetime.now(fuso).strftime('%d/%m/%Y às %H:%M')
+
+css_html = "<style>"
+css_html += "body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; padding: 20px; color: #000; }"
+css_html += "table { width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1px solid #1b294b; }"
+css_html += "th, td { border: 1px solid #1b294b; padding: 6px; text-align: center; vertical-align: middle; }"
+css_html += "thead th { background-color: #1b294b; color: #ffffff; font-weight: normal; font-size: 11px; }"
+css_html += ".titulo-bloco { background-color: #1b294b; color: white; padding: 10px; font-size: 14px; font-weight: bold; text-align: left; }"
+css_html += ".obs-header { background-color: #ef5350; color: white; padding: 8px; font-size: 14px; font-weight: bold; text-align: center; border: 1px solid #777; }"
+css_html += ".obs-dia { width: 15%; font-weight: bold; background-color: #f8f9fa; }"
+css_html += ".obs-texto { text-align: left; padding-left: 10px; line-height: 1.4; }"
+css_html += "</style>"
+
+html_doc = "<html><head><meta charset='utf-8'>" + css_html + "</head><body>"
+html_doc += "<div style='text-align: right; color: #555; font-size: 10px; margin-bottom: 10px;'>Emitido em: " + dt_c + "</div>"
+
+html_doc += gerar_tabela_html(df_pl, "Pontes e Lacerda x Cuiabá")
+html_doc += gerar_tabela_html(df_cp, "Cuiabá x Pontes e Lacerda")
+html_doc += gerar_tabela_html(df_out, "Outros Trajetos e Viagens Especiais")
+
+html_doc += "<table style='margin-top: 30px;'>"
+html_doc += "<tr><td colspan='2' class='obs-header'>Observações Semanais</td></tr>"
+for dia in dias_s:
+    idx = dias_s.index(dia)
+    data_formatada = datas_s[idx]
+    texto_puro = novas_observacoes[dia.lower()]
+    texto_html = texto_puro.replace("\n", "<br>")
+    
+    html_doc += "<tr>"
+    html_doc += "<td class='obs-dia'>" + dia + "<br>" + data_formatada + "</td>"
+    html_doc += "<td class='obs-texto'>" + texto_html + "</td>"
+    html_doc += "</tr>"
+html_doc += "</table>"
+html_doc += "</body></html>"
+
+st.download_button(label="📄 Baixar Relatório Corporativo AURA (HTML/PDF)", data=html_doc, file_name="agenda_AURA_semanal.html", mime="text/html", width='stretch')
+
+# 7. EXIBIÇÃO NO PAINEL COM AS COLUNAS AGRUPADAS NATIVAS
+st.markdown('<div class="treche-header">Trecho: Pontes e Lacerda x Cuiabá</div>', unsafe_allow_html=True)
+st.dataframe(df_pl, width='stretch', hide_index=True)
+
+st.markdown('<div class="treche-header">Trecho: Cuiabá x Pontes e Lacerda</div>', unsafe_allow_html=True)
+st.dataframe(df_cp, width='stretch', hide_index=True)
+
+st.markdown('<div class="treche-header">Outros Trajetos e Viagens Especiais</div>', unsafe_allow_html=True)
+st.dataframe(df_out, width='stretch', hide_index=True)
