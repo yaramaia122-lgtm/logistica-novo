@@ -12,7 +12,7 @@ if 'logado' not in st.session_state or not st.session_state['logado']:
 
 st.set_page_config(page_title="Agenda - AURA LOGISTICS", layout="wide")
 
-# CSS DA TELA (SEGURO CONTRA ERROS)
+# CSS DA TELA
 css_tela = "<style>"
 css_tela += ".stApp { background-color: #F8FAFC !important; }"
 css_tela += ".main-title { color: #1b294b !important; font-size: 24pt !important; font-weight: bold; margin-bottom: 5px; }"
@@ -85,50 +85,6 @@ if st.button("💾 Salvar Todas as Observações", width='stretch'):
 
 st.markdown("---")
 
-# 5. DADOS DE VIAGEM
+# 5. DADOS DE VIAGEM E SELEÇÃO DAS 5 COLUNAS ESPECÍFICAS
 df_v.columns = df_v.columns.str.strip().str.lower()
-df_v.columns = df_v.columns.str.replace("á", "a").str.replace("í", "i").str.replace("º", "")
-df_v = df_v.loc[:, ~df_v.columns.duplicated()]
-
-if "status" not in df_v.columns:
-    df_v["status"] = "Confirmado"
-df_v["status"] = df_v["status"].fillna("Confirmado").astype(str).str.strip()
-df_v = df_v.fillna("").astype(str)
-
-df_vis = df_v[df_v["status"] == "Confirmado"]
-df_sem = df_vis[df_vis["data"].isin(datas_s)]
-
-p_filter = st.multiselect("Filtrar visualização por Passageiro:", options=sorted(list(df_sem["passageiro"].unique())))
-if p_filter:
-    df_ex = df_sem[df_sem['passageiro'].isin(p_filter)]
-else:
-    df_ex = df_sem
-
-# MAPEAMENTO DE COLUNAS
-n_col = {
-    "centro_custo": "Centro de Custo",
-    "passageiro": "Passageiro",
-    "semana": "Semana",
-    "data": "Data",
-    "horario": "Horário",
-    "hora_saida": "Horário",
-    "saida": "Saída",
-    "cia/n voo": "Cia/Nº Voo",
-    "horario do vuo": "Horário Voo",
-    "data do vuo": "Data Voo",
-    "hotel em cuiaba": "Hotel Cuiabá",
-    "hotel cuiaba": "Hotel Cuiabá",
-    "motorista": "Motorista"
-}
-
-cols_ok = []
-for c in df_ex.columns:
-    if "r$" not in c and "custo" not in c and "valor" not in c and "status" not in c:
-        cols_ok.append(c)
-    elif c == "centro_custo": 
-        cols_ok.append(c)
-
-df_lp = df_ex[cols_ok]
-
-if 'trajeto' in df_ex.columns:
-    t_str = df_ex['trajeto'].str.strip().str.lower().str.replace("á", "a")
+df_v.
