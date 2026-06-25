@@ -1,9 +1,8 @@
-
 import streamlit as st
 import pandas as pd
 from github import Github, Auth
 import io
-from datetime import datetime, timedelta
+from datetime import datetime
 import zoneinfo
 
 # 1. VERIFICAÇÃO DE LOGIN
@@ -11,7 +10,7 @@ if 'logado' not in st.session_state or not st.session_state['logado']:
     st.session_state['logado'] = False
     st.switch_page("main.py")
 
-st.set_page_config(page_title="Agenda - AURA LOGISTICS", layout="wide")
+st.set_page_config(page_title="Programar Transporte - AURA LOGISTICS", layout="wide")
 
 # CSS DA TELA
 css_tela = "<style>"
@@ -19,12 +18,11 @@ css_tela += ".stApp { background-color: #F8FAFC !important; }"
 css_tela += ".main-title { color: #1b294b !important; font-size: 24pt !important; font-weight: bold; margin-bottom: 5px; }"
 css_tela += ".subtitle { color: #64748B !important; font-size: 11pt !important; margin-bottom: 25px; }"
 css_tela += ".section-header { background-color: #1b294b !important; color: white !important; padding: 8px 15px; font-weight: bold; font-size: 12pt; border-radius: 4px; margin-top: 15px; margin-bottom: 15px; }"
-css_tela += ".treche-header { background-color: #1b294b !important; color: white !important; padding: 6px 12px; font-weight: bold; font-size: 11pt; border-radius: 4px; margin-top: 20px; margin-bottom: 10px; }"
 css_tela += "</style>"
 st.markdown(css_tela, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">Agenda Semanal de Transporte</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Visualização integrada de trechos, programações confirmadas e orientações</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">Programar Novo Transporte</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Insira os dados da viagem. O sistema definirá o dia da semana automaticamente.</div>', unsafe_allow_html=True)
 
 # 2. CONEXÃO GITHUB
 tk = st.secrets["GITHUB_TOKEN"]
@@ -33,150 +31,159 @@ rp = Github(auth=Auth.Token(tk)).get_repo(repo)
 
 f_log = rp.get_contents("dados_logistica.csv")
 df_v = pd.read_csv(io.StringIO(f_log.decoded_content.decode()))
-f_obs = rp.get_contents("observacoes.csv")
-df_o = pd.read_csv(io.StringIO(f_obs.decoded_content.decode()))
 
-df_o.columns = df_o.columns.str.strip().str.lower()
-df_o = df_o.loc[:, ~df_o.columns.duplicated()]
-
-# 3. CONTROLE DE DATAS
+dias_semana_pt = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
 fuso = zoneinfo.ZoneInfo("America/Cuiaba")
-hoje_f = datetime.now(fuso).date()
+hoje = datetime.now(fuso).date()
 
-st.write("### Período de Monitoramento")
-data_sel = st.date_input("Visualizar agenda a partir do dia:", value=hoje_f)
+# 3. FORMULÁRIO DE CADASTRO
+st.markdown('<div class="section-header">Informações Gerais e de Faturamento</div>', unsafe_allow_html=True)
 
-segunda = data_sel - timedelta(days=data_sel.weekday())
-dias_s = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
-datas_s = [(segunda + timedelta(days=i)).strftime('%d/%m/%Y') for i in range(7)]
+col_geral1, col_geral2 = st.columns(2)
+with col_geral1:
+    passageiro = st.text_input("Nome do Passageiro:", key="prog_passageiro").strip()
+    trajeto = st.selectbox("Selecione o Trajeto:", [
+        "Pontes e Lacerda x Cuiabá", 
+        "Cuiabá x Pontes e Lacerda", 
+        "Outros Trajetos / Viagem Especial"
+    ])
 
-try:
-    data_salva = str(df_o.iloc[0]["data"]).strip()
-except:
-    data_salva = ""
+with col_geral2:
+    lista_centros_custo = [
+        "Selecione...",
+        "210301 - Moagem",
+        "210403 - Detox",
+        "210801 - Laboratório",
+        "211002 - Manutenção Mecânica Planta",
+        "210405 - Lixiviação / Cianetação",
+        "210101 - Administração Planta",
+        "211001 - Manutencao Eletrica Planta",
+        "211003 - Oficina Manutenção Planta",
+        "210201 - Britagem Primária",
+        "210604 - Fundição",
+        "310101 - Almoxarifado",
+        "320401 - Controladoria e Contabilidade",
+        "310701 - Serviços Gerais",
+        "320601 - Celula de Gestao de Contratos",
+        "320101 - Suprimentos",
+        "320502 - Tecnologia da Informação",
+        "311202 - Care and Maintenance SF",
+        "330102 - Apoena Corporativo",
+        "311203 - Care and Maintenance PPQ",
+        "340103 - Jurídico",
+        "310801 - Seguranca Patrimonial",
+        "310301 - PCP",
+        "320201 - Gerência Geral",
+        "310508 - Comunidades",
+        "320303 - Trainee",
+        "320301 - Recursos Humanos",
+        "310902 - Campo",
+        "310904 - Exploração EPP",
+        "121101 - Geologia Operacional - Mina Ernesto",
+        "121102 - Planejamento e Topografia Operacional - Mina Ernes",
+        "151101 - Geologia Operacional - Mina Nosde",
+        "151103 - Geotecnia - Nosde",
+        "210502 - Barragem",
+        "151102 - Planejamento e Topografia Operacional - Mina Nosde",
+        "310501 - Meio Ambiente",
+        "310503 - Segurança do Trabalho",
+        "310502 - Saude",
+        "150101 - Administração de Mina - Céu Aberto - Nosde",
+        "120101 - Administração de Mina - Céu Aberto - Ernesto"
+    ]
+    centro_custo = st.selectbox("Centro de Custo (Oculto na Agenda):", options=lista_centros_custo, key="prog_cc")
+    motorista = st.text_input("Motorista Designado:", key="prog_motorista").strip()
 
-obs_dict = {}
-if data_salva == datas_s[0]:
-    obs_dict = dict(zip(df_o["dia"].str.strip().str.lower(), df_o["observacao"].fillna("")))
+if trajeto == "Pontes e Lacerda x Cuiabá":
+    st.markdown('<div class="section-header">Logística: Saída de Pontes e Lacerda para Cuiabá</div>', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        data_ida = st.date_input("Data da Saída:", value=hoje, key="pl_data")
+        horario_ida = st.text_input("Horário da Saída (Ex: 06:00):", key="pl_hora")
+    with col2:
+        saida_loc = st.text_input("Local de Saída/Embarque:", key="pl_saida")
+        destino_loc = st.text_input("Destino Final em Cuiabá (Hotel/Aeroporto):", key="pl_destino")
+    with col3:
+        voo_num = st.text_input("Cia / Nº do Voo (Se houver):", key="pl_voo")
+        voo_hora = st.text_input("Horário do Voo (Se houver):", key="pl_voo_hora")
+        voo_data = st.date_input("Data do Voo (Se houver):", value=hoje, key="pl_voo_data")
 
-# 4. CAIXAS DE OBSERVAÇÕES
-st.markdown('<div class="section-header">Observações Semanais Operacionais</div>', unsafe_allow_html=True)
+    dia_semana_calculado = dias_semana_pt[data_ida.weekday()]
+    st.caption("📅 Dia da semana detectado automaticamente: **" + dia_semana_calculado + "**")
 
-novas_observacoes = {}
-titulos_abas = []
-for i, dia in enumerate(dias_s):
-    titulos_abas.append(dia + " (" + datas_s[i] + ")")
+elif trajeto == "Cuiabá x Pontes e Lacerda":
+    st.markdown('<div class="section-header">Logística: Chegada em Cuiabá e Retorno para Pontes e Lacerda</div>', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        data_ret = st.date_input("Data da Chegada do Voo:", value=hoje, key="cp_data_ret")
+        horario_ret = st.text_input("Horário de Chegada do Voo (Ex: 14:30):", key="cp_hora_ret")
+        voo_num = st.text_input("Cia / Nº do Voo:", key="cp_voo")
+    with col2:
+        hotel_cuiaba = st.text_input("Hotel em Cuiabá (Se houver):", key="cp_hotel")
+        data_ida = st.date_input("Data da Saída para P. Lacerda:", value=hoje, key="cp_data_saida")
+        horario_ida = st.text_input("Horário da Saída para P. Lacerda:", key="cp_hora_saida")
+    with col3:
+        destino_loc = st.text_input("Destino Final em P. Lacerda (Residência/Obra):", key="cp_destino")
+        saida_loc = "Aeroporto/Hotel Cuiabá"
+        voo_hora = ""
+        voo_data = hoje
 
-abas = st.tabs(titulos_abas)
+    dia_semana_calculado = dias_semana_pt[data_ida.weekday()]
+    dia_semana_ret_calculado = dias_semana_pt[data_ret.weekday()]
+    st.caption("📅 Dia de Saída p/ PL: **" + dia_semana_calculado + "** | Dia de Chegada do Voo: **" + dia_semana_ret_calculado + "**")
 
-for i, dia in enumerate(dias_s):
-    with abas[i]:
-        texto_antigo = obs_dict.get(dia.lower(), "")
-        conteudo = st.text_area(label="Atividades para " + dia + ":", value=texto_antigo, height=180, key="txt_obs_" + dia.lower())
-        novas_observacoes[dia.lower()] = conteudo
+else:
+    st.markdown('<div class="section-header">Logística: Viagem Especial / Outros Trajetos</div>', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        data_ida = st.date_input("Data da Viagem:", value=hoje, key="out_data")
+        horario_ida = st.text_input("Horário:", key="out_hora")
+        saida_loc = st.text_input("Origem/Saída:", key="out_saida")
+    with col2:
+        destino_loc = st.text_input("Destino Final:", key="out_destino")
+        voo_num = st.text_input("Voo / Informações Extras:", key="out_voo")
+        voo_hora = ""
+        voo_data = hoje
 
-if st.button("💾 Salvar Todas as Observações", width='stretch'):
-    dados_salvar = []
-    for i, dia in enumerate(dias_s):
-        dados_salvar.append({"dia": dia, "data": datas_s[i], "observacao": novas_observacoes[dia.lower()]})
-    df_novo_obs = pd.DataFrame(dados_salvar)
-    rp.update_file("observacoes.csv", "Update Obs TextAreas", df_novo_obs.to_csv(index=False), f_obs.sha)
-    st.success("Observações salvas com sucesso!")
-    st.rerun()
+    dia_semana_calculado = dias_semana_pt[data_ida.weekday()]
+    st.caption("📅 Dia da semana detectado automaticamente: **" + dia_semana_calculado + "**")
 
 st.markdown("---")
 
-# 5. DADOS DE VIAGEM E MAQUIAGEM DE COLUNAS
-df_v.columns = df_v.columns.str.strip().str.lower()
-df_v.columns = df_v.columns.str.replace("á", "a").str.replace("í", "i").str.replace("º", "")
-df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+# 4. SALVAMENTO DOS DADOS
+if st.button("🚀 Confirmar e Programar Transporte", width='stretch'):
+    if not passageiro:
+        st.error("Por favor, preencha o nome do Passageiro.")
+    elif centro_custo == "Selecione...":
+        st.error("Por favor, selecione um Centro de Custo válido na lista suspensa.")
+    else:
+        nova_linha = {
+            "centro_custo": centro_custo,
+            "passageiro": passageiro,
+            "trajeto": trajeto.lower(), 
+            "status": "Confirmado",
+            "motorista": motorista,
+            "semana": dias_semana_pt[data_ida.weekday()],
+            "data": data_ida.strftime('%d/%m/%Y'),
+            "horario": horario_ida,
+            "saida": saida_loc,
+            "destino": destino_loc,
+            "cia/n voo": voo_num,
+            "horario do voo": voo_hora,
+            "data do voo": voo_data.strftime('%d/%m/%Y') if isinstance(voo_data, datetime) or hasattr(voo_data, 'strftime') else ""
+        }
+        
+        if trajeto == "Cuiabá x Pontes e Lacerda":
+            nova_linha["semana_ret"] = dias_semana_pt[data_ret.weekday()]
+            nova_linha["data_ret"] = data_ret.strftime('%d/%m/%Y')
+            nova_linha["horario_ret"] = horario_ret
+            nova_linha["hotel cuiaba"] = hotel_cuiaba
 
-if "status" not in df_v.columns:
-    df_v["status"] = "Confirmado"
-df_v["status"] = df_v["status"].fillna("Confirmado").astype(str).str.strip()
-df_v = df_v.fillna("").astype(str)
-
-df_vis = df_v[df_v["status"] == "Confirmado"]
-df_sem = df_vis[df_vis["data"].isin(datas_s)]
-
-p_filter = st.multiselect("Filtrar visualização por Passageiro:", options=sorted(list(df_sem["passageiro"].unique())))
-if p_filter:
-    df_ex = df_sem[df_sem['passageiro'].isin(p_filter)]
-else:
-    df_ex = df_sem
-
-def get_col(df, options):
-    for o in options:
-        if o in df.columns:
-            return df[o].fillna("").astype(str)
-    return pd.Series([""] * len(df), index=df.index)
-
-if 'trajeto' in df_ex.columns:
-    t_str = df_ex['trajeto'].str.strip().str.lower().str.replace("á", "a")
-else:
-    t_str = pd.Series([""] * len(df_ex), index=df_ex.index)
-
-df_pl_raw = df_ex[t_str == "pontes e lacerda x cuiaba"]
-df_cp_raw = df_ex[t_str == "cuiaba x pontes e lacerda"]
-df_out_raw = df_ex[(t_str != "pontes e lacerda x cuiaba") & (t_str != "cuiaba x pontes e lacerda")]
-
-# Dataframes com MultiIndex
-dict_pl = {
-    ('', 'Passageiro'): get_col(df_pl_raw, ['passageiro']),
-    ('Saída de P. Lacerda', 'semana'): get_col(df_pl_raw, ['semana']),
-    ('Saída de P. Lacerda', 'data'): get_col(df_pl_raw, ['data']),
-    ('Saída de P. Lacerda', 'horário'): get_col(df_pl_raw, ['horario', 'hora_saida']),
-    ('Saída de P. Lacerda', 'saída'): get_col(df_pl_raw, ['saida']),
-    ('Chegada em Cuiabá', 'Cia/nº voo'): get_col(df_pl_raw, ['cia/n voo', 'voo']),
-    ('Chegada em Cuiabá', 'Horário Voo'): get_col(df_pl_raw, ['horario do voo', 'horario do vuo']),
-    ('Chegada em Cuiabá', 'Data do Voo'): get_col(df_pl_raw, ['data do voo', 'data do vuo']),
-    ('Chegada em Cuiabá', 'Destino'): get_col(df_pl_raw, ['destino', 'hotel em cuiaba']),
-    ('', 'Motorista'): get_col(df_pl_raw, ['motorista'])
-}
-df_pl = pd.DataFrame(dict_pl)
-
-dict_cp = {
-    ('', 'Passageiro'): get_col(df_cp_raw, ['passageiro']),
-    ('Chegada em Cuiabá', 'semana'): get_col(df_cp_raw, ['semana_ret']),
-    ('Chegada em Cuiabá', 'data'): get_col(df_cp_raw, ['data_ret']),
-    ('Chegada em Cuiabá', 'horário'): get_col(df_cp_raw, ['horario_ret', 'chegada do voo']),
-    ('Chegada em Cuiabá', 'Cia/nº voo'): get_col(df_cp_raw, ['cia/n voo', 'voo']),
-    ('Chegada em Cuiabá', 'Hotel'): get_col(df_cp_raw, ['hotel cuiaba']),
-    ('Saída para P. Lacerda', 'semana'): get_col(df_cp_raw, ['semana']),
-    ('Saída para P. Lacerda', 'data'): get_col(df_cp_raw, ['data']),
-    ('Saída para P. Lacerda', 'horário'): get_col(df_cp_raw, ['horario', 'hora_saida']),
-    ('Saída para P. Lacerda', 'Motorista'): get_col(df_cp_raw, ['motorista']),
-    ('', 'Destino'): get_col(df_cp_raw, ['destino', 'hospedagem . lacerda'])
-}
-df_cp = pd.DataFrame(dict_cp)
-
-# 6. GERADOR DE HTML COM BORDAS VISÍVEIS
-def gerar_tabela_html(df, titulo):
-    if df.empty:
-        return f"<div class='titulo-bloco'>{titulo}</div><table style='background:#f4f4f4; border: 1px solid #777;'><tr><td>Sem viagens confirmadas.</td></tr></table>"
-    
-    html = f"<div class='titulo-bloco'>{titulo}</div><table style='border-collapse: collapse; border: 1px solid #777;'>"
-    html += "<thead style='background-color: #1b294b; color: white;'>"
-    
-    # Cabeçalho Grupos
-    html += "<tr>"
-    for group, col in df.columns:
-        html += f"<th style='border: 1px solid #777; padding: 6px;'>{group}</th>"
-    html += "</tr>"
-    
-    # Cabeçalho Colunas
-    html += "<tr>"
-    for group, col in df.columns:
-        html += f"<th style='border: 1px solid #777; padding: 6px;'>{col}</th>"
-    html += "</tr></thead><tbody>"
-    
-    for _, row in df.iterrows():
-        html += "<tr>"
-        for val in row:
-            html += f"<td style='border: 1px solid #777; padding: 6px;'>{val}</td>"
-        html += "</tr>"
-    html += "</tbody></table>"
-    return html
-
-# [Restante do código de geração HTML e exibição st.dataframe idêntico...]
-# (Note que o segredo aqui foi adicionar style='border: 1px solid #777' em todas as tags <table>, <th> e <td>)
+        df_nova_row = pd.DataFrame([nova_linha])
+        df_final_salvar = pd.concat([df_v, df_nova_row], ignore_index=True)
+        
+        conteudo_csv = df_final_salvar.to_csv(index=False)
+        rp.update_file("dados_logistica.csv", "Nova Programacao Automatizada", conteudo_csv, f_log.sha)
+        
+        st.success("Transporte de " + passageiro + " programado e sincronizado com sucesso!")
+        st.balloons()
