@@ -2,49 +2,78 @@ import streamlit as st
 import pandas as pd
 from github import Github, Auth
 import io
-from datetime import datetime
 
-# 1. VERIFICAÇÃO DE LOGIN
-if 'logado' not in st.session_state or not st.session_state['logado']:
+st.set_page_config(page_title="Login - AURA LOGISTICS", layout="centered")
+
+# CSS para a interface de login
+st.markdown("""
+<style>
+    .stApp { background-color: #F8FAFC !important; }
+    .login-title {
+        color: #1b294b;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+if 'logado' not in st.session_state:
     st.session_state['logado'] = False
-    st.switch_page("main.py")
 
-st.set_page_config(page_title="Painel Administrativo - AURA LOGISTICS", layout="wide")
+if st.session_state['logado']:
+    st.switch_page("pages/1_Agenda.py")
 
-# CSS DA TELA
-css_tela = """<style>
-.stApp { background-color: #F8FAFC !important; }
-.main-title { color: #1b294b !important; font-size: 24pt !important; font-weight: bold; margin-bottom: 5px; }
-.subtitle { color: #64748B !important; font-size: 11pt !important; margin-bottom: 25px; }
-.section-header { background-color: #1b294b !important; color: white !important; padding: 8px 15px; font-weight: bold; font-size: 12pt; border-radius: 4px; margin-top: 15px; margin-bottom: 15px; }
-</style>"""
-st.markdown(css_tela, unsafe_allow_html=True)
+st.markdown('<h2 class="login-title">🔒 AURA LOGISTICS - Controle de Acesso</h2>', unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">Painel Administrativo de Logística</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Gerenciamento centralizado de registros, trajetos, controle financeiro e credenciais de acesso</div>', unsafe_allow_html=True)
+with st.container():
+    with st.form("login_form"):
+        usuario = st.text_input("Usuário:").strip()
+        senha = st.text_input("Senha:", type="password").strip()
+        enviar = st.form_submit_button("Entrar no Sistema", use_container_width=True)
 
-# LISTA DE CENTROS DE CUSTO CORPORATIVOS
-lista_centros_custo = [
-    "Selecione...", "120101 - Administração de Mina - Céu Aberto - Ernesto", 
-    "150101 - Administração de Mina - Céu Aberto - Nosde", "210101 - Administração Planta",
-    "210201 - Britagem Primária", "210301 - Moagem", "210403 - Detox", "210405 - Lixiviação / Cianetação", 
-    "210502 - Barragem", "210604 - Fundição", "210801 - Laboratório", "211001 - Manutencao Eletrica Planta", 
-    "211002 - Manutenção Mecânica Planta", "211003 - Oficina Manutenção Planta", "310101 - Almoxarifado", 
-    "310301 - PCP", "310501 - Meio Ambiente", "310502 - Saude", "310503 - Segurança do Trabalho", 
-    "310508 - Comunidades", "310701 - Serviços Gerais", "310801 - Seguranca Patrimonial", 
-    "311202 - Care and Maintenance SF", "311203 - Care and Maintenance PPQ", "320101 - Suprimentos", 
-    "320201 - Gerência Geral", "320301 - Recursos Humanos", "320303 - Trainee", 
-    "320401 - Controladoria e Contabilidade", "320502 - Tecnologia da Informação", 
-    "320601 - Celula de Gestao de Contratos", "330102 - Apoena Corporativo", "340103 - Jurídico",
-    "310902 - Campo", "310904 - Exploração EPP", "121101 - Geologia Operacional - Mina Ernesto",
-    "121102 - Planejamento e Topografia Operacional - Mina Ernes", "151101 - Geologia Operacional - Mina Nosde",
-    "151103 - Geotecnia - Nosde", "151102 - Planejamento e Topografia Operacional - Mina Nosde"
-]
-
-# 2. CONEXÃO GITHUB
-tk = st.secrets["GITHUB_TOKEN"]
-repo = st.secrets["GITHUB_REPO"]
-rp = Github(auth=Auth.Token(tk)).get_repo(repo)
-
-f_log = rp.get_contents("dados_logistica.csv")
-df_v = pd.read_csv(io.StringIO(f_log.decoded_
+        if enviar:
+            # 🌟 REGRA MESTRE: Libera o acesso imediato e corrige o ficheiro corrompido no GitHub
+            if usuario == "adm" and senha == "aura123":
+                st.session_state['logado'] = True
+                
+                try:
+                    tk = st.secrets["GITHUB_TOKEN"]
+                    repo = st.secrets["GITHUB_REPO"]
+                    rp = Github(auth=Auth.Token(tk)).get_repo(repo)
+                    
+                    df_base_u = pd.DataFrame([{"usuario": "adm", "senha": "aura123"}])
+                    try:
+                        f_user = rp.get_contents("usuarios.csv")
+                        rp.update_file("usuarios.csv", "Restauracao Mestre de Credenciais", df_base_u.to_csv(index=False), f_user.sha)
+                    except Exception:
+                        rp.create_file("usuarios.csv", "Inicializar tabela de usuarios", df_base_u.to_csv(index=False))
+                except Exception:
+                    pass
+                
+                st.success("Acesso mestre concedido! Redirecionando...")
+                st.rerun()
+            else:
+                # Validação normal para os outros utilizadores cadastrados
+                try:
+                    tk = st.secrets["GITHUB_TOKEN"]
+                    repo = st.secrets["GITHUB_REPO"]
+                    rp = Github(auth=Auth.Token(tk)).get_repo(repo)
+                    f_user = rp.get_contents("usuarios.csv")
+                    df_u = pd.read_csv(io.StringIO(f_user.decoded_content.decode()))
+                    df_u.columns = df_u.columns.str.strip().str.lower()
+                    
+                    validou = False
+                    for _, row in df_u.iterrows():
+                        if str(row['usuario']).strip() == usuario and str(row['senha']).strip() == senha:
+                            validou = True
+                            break
+                    
+                    if validou:
+                        st.session_state['logado'] = True
+                        st.success("Login efetuado com sucesso!")
+                        st.rerun()
+                    else:
+                        st.error("Usuário ou senha incorretos.")
+                except Exception:
+                    st.error("Erro na base de dados de utilizadores. Utilize as credenciais mestre para restaurar.")
