@@ -23,7 +23,7 @@ st.markdown(css_tela, unsafe_allow_html=True)
 st.markdown('<div class="main-title">Painel Administrativo de Logística</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle">Gerenciamento centralizado de registros, trajetos, controle financeiro e credenciais de acesso</div>', unsafe_allow_html=True)
 
-# 🌟 LISTA DE CENTROS DE CUSTO CORPORATIVOS (DEFINIDA GLOBALMENTE PARA EVITAR ERROS)
+# LISTA DE CENTROS DE CUSTO CORPORATIVOS
 lista_centros_custo = [
     "Selecione...", "120101 - Administração de Mina - Céu Aberto - Ernesto", 
     "150101 - Administração de Mina - Céu Aberto - Nosde", "210101 - Administração Planta",
@@ -47,86 +47,4 @@ repo = st.secrets["GITHUB_REPO"]
 rp = Github(auth=Auth.Token(tk)).get_repo(repo)
 
 f_log = rp.get_contents("dados_logistica.csv")
-df_v = pd.read_csv(io.StringIO(f_log.decoded_content.decode()))
-
-# Limpeza e padronização das colunas
-df_v.columns = df_v.columns.str.strip().str.lower()
-df_v = df_v.loc[:, ~df_v.columns.duplicated()]
-
-# 3. ABAS DO PAINEL
-tab1, tab2 = st.tabs(["Registro Completo de Custos", "Gestão Corporativa de Usuários"])
-
-with tab1:
-    st.markdown('<div class="section-header">Inserir ou Alterar Registro Operacional</div>', unsafe_allow_html=True)
-
-    lista_opcoes = ["➕ CRIAR NOVO REGISTRO"]
-    for i, row in df_v.iterrows():
-        pass_name = str(row.get('passageiro', 'Sem Nome'))
-        date_val = str(row.get('data', ''))
-        lista_opcoes.append(f"{i} - {pass_name} ({date_val})")
-
-    registro_sel = st.selectbox("🔎 Selecione um registro para ALTERAR ou deixe na primeira opção para CRIAR NOVO:", options=lista_opcoes)
-
-    # Inicialização padrão das variáveis do formulário
-    idx_edit = None
-    def_pass = ""
-    def_cc = "Selecione..."
-    def_mot = ""
-    def_data = datetime.now().date()
-    def_traj = "Pontes e Lacerda x Cuiabá"
-    def_status = "Confirmado"
-    def_hora = ""
-    def_hosp = 0.0
-    def_trans = 0.0
-    def_aereo = 0.0
-    def_outros = 0.0
-
-    # Puxa os dados da linha se for uma alteração/edição
-    if registro_sel != "➕ CRIAR NOVO REGISTRO":
-        idx_edit = int(registro_sel.split(" - ")[0])
-        row_edit = df_v.loc[idx_edit]
-        
-        def_pass = str(row_edit.get('passageiro', ''))
-        def_mot = str(row_edit.get('motorista', ''))
-        
-        def_cc = str(row_edit.get('centro_custo', 'Selecione...')).strip()
-        if def_cc not in lista_centros_custo: 
-            def_cc = "Selecione..."
-        
-        try:
-            def_data = datetime.strptime(str(row_edit.get('data', '')).split(" ")[0], '%d/%m/%Y').date()
-        except:
-            try:
-                def_data = datetime.strptime(str(row_edit.get('data', '')).split(" ")[0], '%Y-%m-%d').date()
-            except:
-                def_data = datetime.now().date()
-                
-        t_val = str(row_edit.get('trajeto', 'Pontes e Lacerda x Cuiabá')).strip().lower()
-        if "cuiaba x pontes e lacerda" in t_val or "cuiabá x pontes e lacerda" in t_val: 
-            def_traj = "Cuiabá x Pontes e Lacerda"
-        elif "outros" in t_val: 
-            def_traj = "Outros Trajetos / Viagem Especial"
-        else: 
-            def_traj = "Pontes e Lacerda x Cuiabá"
-
-        def_status = str(row_edit.get('status', 'Confirmado')).strip()
-        if def_status not in ["Confirmado", "Cancelado", "Ocultado"]: 
-            def_status = "Confirmado"
-
-        def_hora = str(row_edit.get('horario', str(row_edit.get('hora_saida', ''))))
-        if def_hora == "nan" or def_hora == "None": 
-            def_hora = ""
-        
-        def safe_float(val):
-            try: return float(val)
-            except: return 0.0
-        
-        def_hosp = safe_float(row_edit.get('hotel_v', 0.0))
-        def_trans = safe_float(row_edit.get('comb_v', 0.0))
-        def_aereo = safe_float(row_edit.get('aereo_v', 0.0))
-        def_outros = safe_float(row_edit.get('outros_v', 0.0))
-
-    # Desenho do Formulário na Tela
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        in_pass = st.text_input("Nome do Passageiro", value=def_pass if def
+df_v = pd.read_csv(io.StringIO(f_log.decoded_
