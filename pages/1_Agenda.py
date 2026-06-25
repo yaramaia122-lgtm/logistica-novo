@@ -87,4 +87,108 @@ st.markdown("---")
 
 # 5. DADOS DE VIAGEM E SELEÇÃO DAS 5 COLUNAS ESPECÍFICAS
 df_v.columns = df_v.columns.str.strip().str.lower()
-df_v.
+df_v.columns = df_v.columns.str.replace("á", "a").str.replace("í", "i").str.replace("º", "")
+df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+
+if "status" not in df_v.columns:
+    df_v["status"] = "Confirmado"
+df_v["status"] = df_v["status"].fillna("Confirmado").astype(str).str.strip()
+df_v = df_v.fillna("").astype(str)
+
+df_vis = df_v[df_v["status"] == "Confirmado"]
+df_sem = df_vis[df_vis["data"].isin(datas_s)]
+
+p_filter = st.multiselect("Filtrar visualização por Passageiro:", options=sorted(list(df_sem["passageiro"].unique())))
+if p_filter:
+    df_ex = df_sem[df_sem['passageiro'].isin(p_filter)]
+else:
+    df_ex = df_sem
+
+n_col_mapeamento = {
+    "passageiro": "Passageiro", 
+    "data": "Data", 
+    "horario": "Horário", 
+    "saida": "Saída", 
+    "motorista": "Motorista"
+}
+
+if "horario" not in df_ex.columns and "hora_saida" in df_ex.columns:
+    df_ex = df_ex.rename(columns={"hora_saida": "horario"})
+
+# Puxa APENAS as 5 colunas exatas e remove as duplicações
+colunas_finais_existentes = [c for c in ["passageiro", "data", "horario", "saida", "motorista"] if c in df_ex.columns]
+df_filtrado = df_ex[colunas_finais_existentes]
+df_filtrado = df_filtrado.loc[:, ~df_filtrado.columns.duplicated()]
+
+if 'trajeto' in df_ex.columns:
+    t_str = df_ex['trajeto'].str.strip().str.lower().str.replace("á", "a")
+else:
+    t_str = pd.Series([""] * len(df_ex), index=df_ex.index)
+
+df_pl = df_filtrado[t_str == "pontes e lacerda x cuiaba"].rename(columns=n_col_mapeamento)
+df_cp = df_filtrado[t_str == "cuiaba x pontes e lacerda"].rename(columns=n_col_mapeamento)
+df_out = df_filtrado[(t_str != "pontes e lacerda x cuiaba") & (t_str != "cuiaba x pontes e lacerda")].rename(columns=n_col_mapeamento)
+
+# 🌟 6. GERADOR DE HTML CORPORATIVO COM OS 3 TRECHOS E APENAS 5 COLUNAS
+dt_c = datetime.now(fuso).strftime('%d/%m/%Y às %H:%M')
+
+css_html = "<style>"
+css_html += "body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; padding: 20px; color: #000; }"
+css_html += "table { width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1px solid #777; }"
+css_html += "th, td { border: 1px solid #777; padding: 6px; text-align: center; vertical-align: middle; }"
+css_html += "thead th { background-color: #1b294b; color: #ffffff; font-weight: normal; font-size: 11px; }"
+css_html += ".titulo-bloco { background-color: #1b294b; color: white; padding: 10px; font-size: 14px; font-weight: bold; text-align: left; }"
+css_html += ".obs-header { background-color: #ef5350; color: white; padding: 8px; font-size: 14px; font-weight: bold; text-align: center; border: 1px solid #777; }"
+css_html += ".obs-dia { width: 15%; font-weight: bold; background-color: #f8f9fa; }"
+css_html += ".obs-texto { text-align: left; padding-left: 10px; line-height: 1.4; }"
+css_html += "</style>"
+
+html_doc = "<html><head><meta charset='utf-8'>" + css_html + "</head><body>"
+html_doc += "<div style='text-align: right; color: #555; font-size: 10px; margin-bottom: 10px;'>Emitido em: " + dt_c + "</div>"
+
+html_doc += "<div class='titulo-bloco'>Pontes e Lacerda x Cuiabá</div>"
+if not df_pl.empty:
+    html_doc += df_pl.to_html(index=False, justify='center', na_rep='-')
+else:
+    html_doc += "<table style='background:#f4f4f4;'><tr><td>Sem viagens confirmadas.</td></tr></table>"
+
+html_doc += "<div class='titulo-bloco' style='margin-top: 20px;'>Cuiabá x Pontes e Lacerda</div>"
+if not df_cp.empty:
+    html_doc += df_cp.to_html(index=False, justify='center', na_rep='-')
+else:
+    html_doc += "<table style='background:#f4f4f4;'><tr><td>Sem viagens confirmadas.</td></tr></table>"
+
+html_doc += "<div class='titulo-bloco' style='margin-top: 20px;'>Outros Trajetos e Viagens Especiais</div>"
+if not df_out.empty:
+    html_doc += df_out.to_html(index=False, justify='center', na_rep='-')
+else:
+    html_doc += "<table style='background:#f4f4f4;'><tr><td>Sem viagens especiais.</td></tr></table>"
+
+html_doc += "<table style='margin-top: 30px;'>"
+html_doc += "<tr><td colspan='2' class='obs-header'>Observações Semanais</td></tr>"
+
+for dia in dias_s:
+    idx = dias_s.index(dia)
+    data_formatada = datas_s[idx]
+    texto_puro = novas_observacoes[dia.lower()]
+    texto_html = texto_puro.replace("\n", "<br>")
+    
+    html_doc += "<tr>"
+    html_doc += "<td class='obs-dia'>" + dia + "<br>" + data_formatada + "</td>"
+    html_doc += "<td class='obs-texto'>" + texto_html + "</td>"
+    html_doc += "</tr>"
+html_doc += "</table>"
+
+html_doc += "</body></html>"
+
+st.download_button(label="📄 Baixar Relatório Corporativo AURA (HTML/PDF)", data=html_doc, file_name="agenda_AURA_semanal.html", mime="text/html", width='stretch')
+
+# 7. EXIBIÇÃO NO PAINEL COM OS 3 TRECHOS COMPLETOS
+st.markdown('<div class="treche-header">Trecho: Pontes e Lacerda x Cuiabá</div>', unsafe_allow_html=True)
+st.dataframe(df_pl, width='stretch', hide_index=True)
+
+st.markdown('<div class="treche-header">Trecho: Cuiabá x Pontes e Lacerda</div>', unsafe_allow_html=True)
+st.dataframe(df_cp, width='stretch', hide_index=True)
+
+st.markdown('<div class="treche-header">Outros Trajetos e Viagens Especiais</div>', unsafe_allow_html=True)
+st.dataframe(df_out, width='stretch', hide_index=True)
