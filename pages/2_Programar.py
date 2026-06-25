@@ -5,114 +5,150 @@ import io
 from datetime import datetime
 import zoneinfo
 
-# 1. VERIFICAÇÃO DE LOGIN DE USUÁRIO
+# 1. VERIFICAÇÃO DE LOGIN
 if 'logado' not in st.session_state or not st.session_state['logado']:
     st.session_state['logado'] = False
     st.switch_page("main.py")
 
-st.set_page_config(page_title="Programar - AURA LOGISTICS", layout="wide")
+st.set_page_config(page_title="Programar Transporte - AURA LOGISTICS", layout="wide")
 
-# 🎨 ESTILIZAÇÃO CORPORATIVA PROFISSIONAL (SEM EMOJIS)
-st.markdown("""<style>
-    .stApp { background-color: #F8FAFC !important; }
-    .main-title { color: #002D5E !important; font-size: 24pt !important; font-weight: bold; margin-bottom: 5px; }
-    .subtitle { color: #64748B !important; font-size: 11pt !important; margin-bottom: 25px; }
-    .section-header { background-color: #002D5E !important; color: white !important; padding: 8px 15px; font-weight: bold; font-size: 12pt; border-radius: 4px; margin-top: 15px; margin-bottom: 15px; }
-    .subsection-header { color: #002D5E !important; font-weight: bold; font-size: 11pt; margin-top: 15px; margin-bottom: 10px; border-left: 4px solid #FF7F50; padding-left: 8px; }
-</style>""", unsafe_allow_html=True)
+# CSS DA TELA (SEGURO CONTRA ERROS DO PYTHON 3.14)
+css_tela = "<style>"
+css_tela += ".stApp { background-color: #F8FAFC !important; }"
+css_tela += ".main-title { color: #1b294b !important; font-size: 24pt !important; font-weight: bold; margin-bottom: 5px; }"
+css_tela += ".subtitle { color: #64748B !important; font-size: 11pt !important; margin-bottom: 25px; }"
+css_tela += ".section-header { background-color: #1b294b !important; color: white !important; padding: 8px 15px; font-weight: bold; font-size: 12pt; border-radius: 4px; margin-top: 15px; margin-bottom: 15px; }"
+css_tela += "</style>"
+st.markdown(css_tela, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">Planejamento e Programação de Viagens</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Abertura de ordens de transporte, alocação de passageiros e provisionamento logístico inicial</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">Programar Novo Transporte</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Insira os dados da viagem. O sistema definirá o dia da semana automaticamente.</div>', unsafe_allow_html=True)
 
-# 2. CONEXÃO SEGURA COM O REPOSITÓRIO GITHUB
-tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
+# 2. CONEXÃO GITHUB
+tk = st.secrets["GITHUB_TOKEN"]
+repo = st.secrets["GITHUB_REPO"]
 rp = Github(auth=Auth.Token(tk)).get_repo(repo)
 
 f_log = rp.get_contents("dados_logistica.csv")
 df_v = pd.read_csv(io.StringIO(f_log.decoded_content.decode()))
 
-# 3. CAPTURA AUTOMÁTICA DE DATAS E FUSO OPERACIONAL
+# Lista de dias da semana para cálculo automático
+dias_semana_pt = ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"]
 fuso = zoneinfo.ZoneInfo("America/Cuiaba")
-hoje = datetime.now(fuso)
-data_hoje = hoje.date()
+hoje = datetime.now(fuso).date()
 
-# 4. FORMULÁRIO OPERACIONAL DIVIDIDO EM SEÇÕES
-st.markdown('<div class="section-header">Dados Cadastrais Básicos</div>', unsafe_allow_html=True)
+# 3. FORMULÁRIO DE CADASTRO
+st.markdown('<div class="section-header">Informações Gerais e de Faturamento</div>', unsafe_allow_html=True)
 
-col_p, col_m, col_d = st.columns(3)
-p_nome = col_p.text_input("Nome do Passageiro")
-m_nome = col_m.selectbox("Motorista Designado", ["Ilson", "Particular", "Outro Profissional"])
-d_viagem = col_d.date_input("Data da Viagem", data_hoje)
+col_geral1, col_geral2 = st.columns(2)
+with col_geral1:
+    passageiro = st.text_input("Nome do Passageiro:", key="prog_passageiro").strip()
+    trajeto = st.selectbox("Selecione o Trajeto:", [
+        "Pontes e Lacerda x Cuiabá", 
+        "Cuiabá x Pontes e Lacerda", 
+        "Outros Trajetos / Viagem Especial"
+    ])
 
-col_t, col_h, col_s = st.columns(3)
-t_escolha = col_t.selectbox("Trajeto Obrigatório", ["Pontes e Lacerda x Cuiabá", "Cuiabá x Pontes e Lacerda", "Outros"])
-h_saida = col_h.text_input("Horário Estimado de Saída (HH:MM)")
-s_semana = col_s.selectbox("Dia da Semana Correspondente", ["Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado", "Domingo"])
+with col_geral2:
+    # O Centro de Custo é obrigatório aqui, mas a Agenda já está programada para ocultá-lo da visão geral
+    centro_custo = st.text_input("Centro de Custo (Oculto na Agenda):", key="prog_cc").strip()
+    motorista = st.text_input("Motorista Designado:", key="prog_motorista").strip()
 
-# SEÇÃO DE PROVISIONAMENTO DE VOOS
-st.markdown('<div class="section-header">Provisionamento de Transporte Aéreo</div>', unsafe_allow_html=True)
-c_voo = st.checkbox("Esta programação envolve trecho com passagem aérea aérea?")
+# Formulários dinâmicos baseados no Trajeto selecionado
+if trajeto == "Pontes e Lacerda x Cuiabá":
+    st.markdown('<div class="section-header">Logística: Saída de Pontes e Lacerda para Cuiabá</div>', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        data_ida = st.date_input("Data da Saída:", value=hoje, key="pl_data")
+        horario_ida = st.text_input("Horário da Saída (Ex: 06:00):", key="pl_hora")
+    with col2:
+        saida_loc = st.text_input("Local de Saída/Embarque:", key="pl_saida")
+        destino_loc = st.text_input("Destino Final em Cuiabá (Hotel/Aeroporto):", key="pl_destino")
+    with col3:
+        voo_num = st.text_input("Cia / Nº do Voo (Se houver):", key="pl_voo")
+        voo_hora = st.text_input("Horário do Voo (Se houver):", key="pl_voo_hora")
+        voo_data = st.date_input("Data do Voo (Se houver):", value=hoje, key="pl_voo_data")
 
-v_cia, v_horario, v_data = "", "", ""
-if c_voo:
-    col_a1, col_a2, col_a3 = st.columns(3)
-    v_cia = col_a1.text_input("Companhia e Número do Voo")
-    v_horario = col_a2.text_input("Horário do Voo (HH:MM)")
-    v_data_input = col_a3.date_input("Data do Voo", data_hoje)
-    v_data = v_data_input.strftime('%d/%m/%Y')
+    # Automação do Dia da Semana
+    dia_semana_calculado = dias_semana_pt[data_ida.weekday()]
+    st.caption("📅 Dia da semana detectado automaticamente: **" + dia_semana_calculado + "**")
 
-# SEÇÃO DE PROVISIONAMENTO DE HOSPEDAGENS
-st.markdown('<div class="section-header">Provisionamento de Hospedagem</div>', unsafe_allow_html=True)
-c_hotel = st.checkbox("Esta programação exige reserva de hotel em Cuiabá?")
+elif trajeto == "Cuiabá x Pontes e Lacerda":
+    st.markdown('<div class="section-header">Logística: Chegada em Cuiabá e Retorno para Pontes e Lacerda</div>', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        data_ret = st.date_input("Data da Chegada do Voo:", value=hoje, key="cp_data_ret")
+        horario_ret = st.text_input("Horário de Chegada do Voo (Ex: 14:30):", key="cp_hora_ret")
+        voo_num = st.text_input("Cia / Nº do Voo:", key="cp_voo")
+    with col2:
+        hotel_cuiaba = st.text_input("Hotel em Cuiabá (Se houver):", key="cp_hotel")
+        data_ida = st.date_input("Data da Saída para P. Lacerda:", value=hoje, key="cp_data_saida")
+        horario_ida = st.text_input("Horário da Saída para P. Lacerda:", key="cp_hora_saida")
+    with col3:
+        destino_loc = st.text_input("Destino Final em P. Lacerda (Residência/Obra):", key="cp_destino")
+        saida_loc = "Aeroporto/Hotel Cuiabá"
+        voo_hora = ""
+        voo_data = hoje
 
-h_nome = ""
-if c_hotel:
-    h_nome = st.text_input("Nome do Estabelecimento / Hotel indicado")
+    # Automação do Dia da Semana para Ida e Retorno
+    dia_semana_calculado = dias_semana_pt[data_ida.weekday()]
+    dia_semana_ret_calculado = dias_semana_pt[data_ret.weekday()]
+    st.caption("📅 Dia de Saída p/ PL: **" + dia_semana_calculado + "** | Dia de Chegada do Voo: **" + dia_semana_ret_calculado + "**")
+
+else:
+    st.markdown('<div class="section-header">Logística: Viagem Especial / Outros Trajetos</div>', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        data_ida = st.date_input("Data da Viagem:", value=hoje, key="out_data")
+        horario_ida = st.text_input("Horário:", key="out_hora")
+        saida_loc = st.text_input("Origem/Saída:", key="out_saida")
+    with col2:
+        destino_loc = st.text_input("Destino Final:", key="out_destino")
+        voo_num = st.text_input("Voo / Informações Extras:", key="out_voo")
+        voo_hora = ""
+        voo_data = hoje
+
+    dia_semana_calculado = dias_semana_pt[data_ida.weekday()]
+    st.caption("📅 Dia da semana detectado automaticamente: **" + dia_semana_calculado + "**")
 
 st.markdown("---")
 
-# 5. PROCESSAMENTO E PERSISTÊNCIA DOS DADOS NO GITHUB
-if st.button("Consolidar e Registrar Programação", width='stretch'):
-    if not p_nome.strip():
-        st.error("Erro: O preenchimento do nome do passageiro é obrigatório para prosseguir.")
+# 4. SALVAMENTO DOS DADOS ALINHADO COM A AGENDA
+if st.button("🚀 Confirmar e Programar Transporte", width='stretch'):
+    if not passageiro:
+        st.error("Por favor, preencha o nome do Passageiro.")
     else:
-        # Padroniza as colunas da planilha para letras minúsculas estruturadas
-        df_v.columns = df_v.columns.str.strip().str.lower()
-        df_v.columns = df_v.columns.str.replace("á", "a").str.replace("í", "i").str.replace("º", "")
-        df_v = df_v.loc[:, ~df_v.columns.duplicated()]
-
-        # Criação do registro limpo e estruturado
-        novo_registro = {
-            "passageiro": p_nome.strip(),
-            "motorista": m_nome,
-            "semana": s_semana,
-            "data": d_viagem.strftime('%d/%m/%Y'),
-            "horario": h_saida.strip(),
-            "saida": "Logística",
-            "trajeto": t_escolha,
-            "cia/n voo": v_cia.strip(),
-            "horario do vuo": v_horario.strip(),
-            "data do vuo": v_data,
-            "hotel em cuiaba": h_nome.strip(),
+        # Cria a nova linha mapeando exatamente os nomes das colunas que a base possui
+        nova_linha = {
+            "centro_custo": centro_custo,
+            "passageiro": passageiro,
+            "trajeto": trajeto.lower(), # Salva em minúsculo para bater com os filtros da agenda
             "status": "Confirmado",
-            "centro_custo": "210301 - Moagem",
-            "hotel_v": "0.00",
-            "comb_v": "0.00",
-            "aereo_v": "0.00",
-            "outros_v": "0.00",
-            "total": "0.00",
-            "voo": ""
+            "motorista": motorista,
+            "semana": dias_semana_pt[data_ida.weekday()],
+            "data": data_ida.strftime('%d/%m/%Y'),
+            "horario": horario_ida,
+            "saida": saida_loc,
+            "destino": destino_loc,
+            "cia/n voo": voo_num,
+            "horario do voo": voo_hora,
+            "data do voo": voo_data.strftime('%d/%m/%Y') if isinstance(voo_data, datetime) or hasattr(voo_data, 'strftime') else ""
         }
+        
+        # Se for o trecho de Cuiabá, alimenta os campos específicos de retorno também
+        if trajeto == "Cuiabá x Pontes e Lacerda":
+            nova_linha["semana_ret"] = dias_semana_pt[data_ret.weekday()]
+            nova_linha["data_ret"] = data_ret.strftime('%d/%m/%Y')
+            nova_linha["horario_ret"] = horario_ret
+            nova_linha["hotel cuiaba"] = hotel_cuiaba
 
-        # Concatena e atualiza diretamente no repositório GitHub de forma limpa
-        df_final = pd.concat([df_v, pd.DataFrame([novo_registro])], ignore_index=True)
-        rp.update_file("dados_logistica.csv", "New Trip Reservation Entry via Programar", df_final.to_csv(index=False), f_log.sha)
-        st.success("Programação registrada com sucesso na base de dados corporativa."); st.rerun()
-
-st.markdown("---")
-
-# 6. HISTÓRICO RECENTE EM MODO DE LEITURA
-st.markdown('<div class="subsection-header">Últimas Programações Registradas em Sistema</div>', unsafe_allow_html=True)
-df_v_display = df_v.copy()
-df_v_display.columns = df_v_display.columns.str.upper()
-st.dataframe(df_v_display.tail(10), width='stretch', hide_index=True)
+        # Converte para DataFrame e faz o Append seguro na base existente
+        df_nova_row = pd.DataFrame([nova_linha])
+        df_final_salvar = pd.concat([df_v, df_nova_row], ignore_index=True)
+        
+        # Envia de volta para o GitHub
+        conteudo_csv = df_final_salvar.to_csv(index=False)
+        rp.update_file("dados_logistica.csv", "Nova Programacao Automatizada", conteudo_csv, f_log.sha)
+        
+        st.success("Transporte de " + passageiro + " programado e sincronizado com sucesso!")
+        st.balloons()
