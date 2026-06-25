@@ -58,7 +58,7 @@ obs_dict = {}
 if data_salva == datas_s[0]:
     obs_dict = dict(zip(df_o["dia"].str.strip().str.lower(), df_o["observacao"].fillna("")))
 
-# 🌟 4. CAIXAS DE OBSERVAÇÕES (COM ESPAÇO PARA ALT+ENTER)
+# 🌟 4. CAIXAS DE OBSERVAÇÕES
 st.markdown('<div class="section-header">Observações Semanais Operacionais</div>', unsafe_allow_html=True)
 
 novas_observacoes = {}
@@ -85,7 +85,7 @@ if st.button("💾 Salvar Todas as Observações", width='stretch'):
 
 st.markdown("---")
 
-# 5. DADOS DE VIAGEM E SELEÇÃO DAS 5 COLUNAS ESPECÍFICAS
+# 5. DADOS DE VIAGEM E MAQUIAGEM DE COLUNAS (INCLUINDO DESTINO E CHEGADA DO VOO)
 df_v.columns = df_v.columns.str.strip().str.lower()
 df_v.columns = df_v.columns.str.replace("á", "a").str.replace("í", "i").str.replace("º", "")
 df_v = df_v.loc[:, ~df_v.columns.duplicated()]
@@ -104,32 +104,51 @@ if p_filter:
 else:
     df_ex = df_sem
 
+# Dicionário robusto de conversão (pega várias formas de escrever a mesma coisa)
 n_col_mapeamento = {
     "passageiro": "Passageiro", 
     "data": "Data", 
     "horario": "Horário", 
+    "hora_saida": "Horário",
     "saida": "Saída", 
-    "motorista": "Motorista"
+    "destino": "Destino",
+    "motorista": "Motorista",
+    "cia/n voo": "Cia/Nº Voo",
+    "voo": "Cia/Nº Voo",
+    "horario do vuo": "Horário Voo",
+    "horario do voo": "Horário Voo",
+    "chegada do voo": "Chegada Voo",
+    "horario de chegada": "Chegada Voo",
+    "horario chegada voo": "Chegada Voo",
+    "data do vuo": "Data Voo",
+    "data do voo": "Data Voo"
 }
 
-if "horario" not in df_ex.columns and "hora_saida" in df_ex.columns:
-    df_ex = df_ex.rename(columns={"hora_saida": "horario"})
+# Renomeia todas as colunas possíveis para o nosso padrão limpo
+df_ex = df_ex.rename(columns=n_col_mapeamento)
+# Remove duplicatas caso ocorram conflitos na conversão
+df_ex = df_ex.loc[:, ~df_ex.columns.duplicated()]
 
-# Puxa APENAS as 5 colunas exatas e remove as duplicações
-colunas_finais_existentes = [c for c in ["passageiro", "data", "horario", "saida", "motorista"] if c in df_ex.columns]
-df_filtrado = df_ex[colunas_finais_existentes]
-df_filtrado = df_filtrado.loc[:, ~df_filtrado.columns.duplicated()]
+# Define exatamente o que vai aparecer em cada tabela
+cols_ida = ["Passageiro", "Data", "Horário", "Saída", "Destino", "Motorista", "Cia/Nº Voo", "Horário Voo", "Data Voo"]
+cols_volta = ["Passageiro", "Data", "Horário", "Saída", "Destino", "Motorista", "Cia/Nº Voo", "Chegada Voo", "Data Voo"]
+
+# Se a coluna não existir no CSV, cria ela vazia para não quebrar a tela
+for c in set(cols_ida + cols_volta):
+    if c not in df_ex.columns:
+        df_ex[c] = ""
 
 if 'trajeto' in df_ex.columns:
     t_str = df_ex['trajeto'].str.strip().str.lower().str.replace("á", "a")
 else:
     t_str = pd.Series([""] * len(df_ex), index=df_ex.index)
 
-df_pl = df_filtrado[t_str == "pontes e lacerda x cuiaba"].rename(columns=n_col_mapeamento)
-df_cp = df_filtrado[t_str == "cuiaba x pontes e lacerda"].rename(columns=n_col_mapeamento)
-df_out = df_filtrado[(t_str != "pontes e lacerda x cuiaba") & (t_str != "cuiaba x pontes e lacerda")].rename(columns=n_col_mapeamento)
+# Monta os DataFrames finais já filtrados com as colunas perfeitas
+df_pl = df_ex[t_str == "pontes e lacerda x cuiaba"][cols_ida]
+df_cp = df_ex[t_str == "cuiaba x pontes e lacerda"][cols_volta]
+df_out = df_ex[(t_str != "pontes e lacerda x cuiaba") & (t_str != "cuiaba x pontes e lacerda")][cols_ida]
 
-# 🌟 6. GERADOR DE HTML CORPORATIVO COM OS 3 TRECHOS E APENAS 5 COLUNAS
+# 6. GERADOR DE HTML CORPORATIVO ATUALIZADO
 dt_c = datetime.now(fuso).strftime('%d/%m/%Y às %H:%M')
 
 css_html = "<style>"
@@ -183,7 +202,7 @@ html_doc += "</body></html>"
 
 st.download_button(label="📄 Baixar Relatório Corporativo AURA (HTML/PDF)", data=html_doc, file_name="agenda_AURA_semanal.html", mime="text/html", width='stretch')
 
-# 7. EXIBIÇÃO NO PAINEL COM OS 3 TRECHOS COMPLETOS
+# 7. EXIBIÇÃO NO PAINEL
 st.markdown('<div class="treche-header">Trecho: Pontes e Lacerda x Cuiabá</div>', unsafe_allow_html=True)
 st.dataframe(df_pl, width='stretch', hide_index=True)
 
