@@ -85,7 +85,7 @@ if st.button("💾 Salvar Todas as Observações", width='stretch'):
 
 st.markdown("---")
 
-# 5. DADOS DE VIAGEM (RECUPERANDO TODAS AS COLUNAS)
+# 5. DADOS DE VIAGEM
 df_v.columns = df_v.columns.str.strip().str.lower()
 df_v.columns = df_v.columns.str.replace("á", "a").str.replace("í", "i").str.replace("º", "")
 df_v = df_v.loc[:, ~df_v.columns.duplicated()]
@@ -104,7 +104,7 @@ if p_filter:
 else:
     df_ex = df_sem
 
-# MAPEAMENTO DE COLUNAS COMPLETAS E BONITAS PARA O PDF
+# MAPEAMENTO DE COLUNAS
 n_col = {
     "centro_custo": "Centro de Custo",
     "passageiro": "Passageiro",
@@ -121,82 +121,14 @@ n_col = {
     "motorista": "Motorista"
 }
 
-# Retirando colunas financeiras, mas mantendo as essenciais da imagem
 cols_ok = []
 for c in df_ex.columns:
     if "r$" not in c and "custo" not in c and "valor" not in c and "status" not in c:
         cols_ok.append(c)
-    elif c == "centro_custo": # Garante que o Centro de Custo apareça como na sua imagem
+    elif c == "centro_custo": 
         cols_ok.append(c)
 
 df_lp = df_ex[cols_ok]
 
 if 'trajeto' in df_ex.columns:
     t_str = df_ex['trajeto'].str.strip().str.lower().str.replace("á", "a")
-else:
-    t_str = pd.Series([""] * len(df_ex), index=df_ex.index)
-
-df_pl = df_lp[t_str == "pontes e lacerda x cuiaba"].rename(columns=n_col)
-df_cp = df_lp[t_str == "cuiaba x pontes e lacerda"].rename(columns=n_col)
-df_out = df_lp[(t_str != "pontes e lacerda x cuiaba") & (t_str != "cuiaba x pontes e lacerda")].rename(columns=n_col)
-
-# 🌟 6. GERADOR DE HTML IDÊNTICO À PLANILHA AURA (AZUL E CORAL)
-dt_c = datetime.now(fuso).strftime('%d/%m/%Y às %H:%M')
-
-# CSS Embutido diretamente na string para formatar o download
-css_html = "<style>"
-css_html += "body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; padding: 20px; color: #000; }"
-css_html += "table { width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1px solid #777; }"
-css_html += "th, td { border: 1px solid #777; padding: 6px; text-align: center; vertical-align: middle; }"
-css_html += "thead th { background-color: #1b294b; color: #ffffff; font-weight: normal; font-size: 11px; }" # Azul Escuro
-css_html += ".titulo-bloco { background-color: #1b294b; color: white; padding: 10px; font-size: 14px; font-weight: bold; text-align: left; }"
-css_html += ".obs-header { background-color: #ef5350; color: white; padding: 8px; font-size: 14px; font-weight: bold; text-align: center; border: 1px solid #777; }" # Coral
-css_html += ".obs-dia { width: 15%; font-weight: bold; background-color: #f8f9fa; }"
-css_html += ".obs-texto { text-align: left; padding-left: 10px; line-height: 1.4; }"
-css_html += "</style>"
-
-html_doc = "<html><head><meta charset='utf-8'>" + css_html + "</head><body>"
-html_doc += "<div style='text-align: right; color: #555; font-size: 10px; margin-bottom: 10px;'>Emitido em: " + dt_c + "</div>"
-
-# Tabela PL x Cuiabá
-html_doc += "<div class='titulo-bloco'>Pontes e Lacerda x Cuiabá</div>"
-if not df_pl.empty:
-    html_doc += df_pl.to_html(index=False, justify='center', na_rep='-')
-else:
-    html_doc += "<table style='background:#f4f4f4;'><tr><td>Sem viagens confirmadas para este trecho na semana.</td></tr></table>"
-
-# Tabela Cuiabá x PL
-html_doc += "<div class='titulo-bloco' style='margin-top: 20px;'>Cuiabá x Pontes e Lacerda</div>"
-if not df_cp.empty:
-    html_doc += df_cp.to_html(index=False, justify='center', na_rep='-')
-else:
-    html_doc += "<table style='background:#f4f4f4;'><tr><td>Sem viagens confirmadas para este trecho na semana.</td></tr></table>"
-
-# Tabela Formata de Observações
-html_doc += "<table style='margin-top: 30px;'>"
-html_doc += "<tr><td colspan='2' class='obs-header'>Observações</td></tr>"
-
-for dia in dias_s:
-    idx = dias_s.index(dia)
-    data_formatada = datas_s[idx]
-    texto_puro = novas_observacoes[dia.lower()]
-    
-    # Substitui Enter real por <br> do HTML para não perder a formatação
-    texto_html = texto_puro.replace("\n", "<br>")
-    
-    html_doc += "<tr>"
-    html_doc += "<td class='obs-dia'>" + dia + "<br>" + data_formatada + "</td>"
-    html_doc += "<td class='obs-texto'>" + texto_html + "</td>"
-    html_doc += "</tr>"
-html_doc += "</table>"
-
-html_doc += "</body></html>"
-
-st.download_button(label="📄 Baixar Relatório Corporativo AURA (HTML/PDF)", data=html_doc, file_name="agenda_AURA_semanal.html", mime="text/html", width='stretch')
-
-# 7. EXIBIÇÃO NO PAINEL
-st.markdown('<div class="treche-header">Trecho: Pontes e Lacerda x Cuiabá</div>', unsafe_allow_html=True)
-st.dataframe(df_pl, width='stretch', hide_index=True)
-
-st.markdown('<div class="treche-header">Trecho: Cuiabá x Pontes e Lacerda</div>', unsafe_allow_html=True)
-st.dataframe(df_cp, width='stretch', hide_index=True)
