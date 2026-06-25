@@ -6,68 +6,127 @@ from datetime import datetime
 
 # 1. VERIFICAÇÃO DE LOGIN
 if 'logado' not in st.session_state or not st.session_state['logado']:
+    st.session_state['logado'] = False
     st.switch_page("main.py")
 
-st.set_page_config(page_title="Painel AURA", layout="wide")
+st.set_page_config(page_title="Painel Administrativo - AURA LOGISTICS", layout="wide")
+
+# CSS DA TELA
+css_tela = """<style>
+.stApp { background-color: #F8FAFC !important; }
+.main-title { color: #1b294b !important; font-size: 24pt !important; font-weight: bold; margin-bottom: 5px; }
+.subtitle { color: #64748B !important; font-size: 11pt !important; margin-bottom: 25px; }
+.section-header { background-color: #1b294b !important; color: white !important; padding: 8px 15px; font-weight: bold; font-size: 12pt; border-radius: 4px; margin-top: 15px; margin-bottom: 15px; }
+</style>"""
+st.markdown(css_tela, unsafe_allow_html=True)
+
+st.markdown('<div class="main-title">Painel Administrativo de Logística</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Gerenciamento centralizado de registros, trajetos, controle financeiro e credenciais de acesso</div>', unsafe_allow_html=True)
+
+# 🌟 LISTA DE CENTROS DE CUSTO CORPORATIVOS (DEFINIDA GLOBALMENTE PARA EVITAR ERROS)
+lista_centros_custo = [
+    "Selecione...", "120101 - Administração de Mina - Céu Aberto - Ernesto", 
+    "150101 - Administração de Mina - Céu Aberto - Nosde", "210101 - Administração Planta",
+    "210201 - Britagem Primária", "210301 - Moagem", "210403 - Detox", "210405 - Lixiviação / Cianetação", 
+    "210502 - Barragem", "210604 - Fundição", "210801 - Laboratório", "211001 - Manutencao Eletrica Planta", 
+    "211002 - Manutenção Mecânica Planta", "211003 - Oficina Manutenção Planta", "310101 - Almoxarifado", 
+    "310301 - PCP", "310501 - Meio Ambiente", "310502 - Saude", "310503 - Segurança do Trabalho", 
+    "310508 - Comunidades", "310701 - Serviços Gerais", "310801 - Seguranca Patrimonial", 
+    "311202 - Care and Maintenance SF", "311203 - Care and Maintenance PPQ", "320101 - Suprimentos", 
+    "320201 - Gerência Geral", "320301 - Recursos Humanos", "320303 - Trainee", 
+    "320401 - Controladoria e Contabilidade", "320502 - Tecnologia da Informação", 
+    "320601 - Celula de Gestao de Contratos", "330102 - Apoena Corporativo", "340103 - Jurídico",
+    "310902 - Campo", "310904 - Exploração EPP", "121101 - Geologia Operacional - Mina Ernesto",
+    "121102 - Planejamento e Topografia Operacional - Mina Ernes", "151101 - Geologia Operacional - Mina Nosde",
+    "151103 - Geotecnia - Nosde", "151102 - Planejamento e Topografia Operacional - Mina Nosde"
+]
 
 # 2. CONEXÃO GITHUB
-try:
-    tk = st.secrets["GITHUB_TOKEN"]
-    repo = st.secrets["GITHUB_REPO"]
-    rp = Github(auth=Auth.Token(tk)).get_repo(repo)
-    f_log = rp.get_contents("dados_logistica.csv")
-    df_v = pd.read_csv(io.StringIO(f_log.decoded_content.decode()))
-    # Normalizar nomes das colunas: remove espaços e coloca em minúsculas
-    df_v.columns = df_v.columns.str.strip().str.lower()
-except Exception as e:
-    st.error(f"Erro ao carregar dados: {e}")
-    df_v = pd.DataFrame()
+tk = st.secrets["GITHUB_TOKEN"]
+repo = st.secrets["GITHUB_REPO"]
+rp = Github(auth=Auth.Token(tk)).get_repo(repo)
 
-# 3. INTERFACE DE SELEÇÃO
-st.subheader("Gestão de Registos")
+f_log = rp.get_contents("dados_logistica.csv")
+df_v = pd.read_csv(io.StringIO(f_log.decoded_content.decode()))
 
-if not df_v.empty:
-    # Criar lista de seleção com base no que existe no ficheiro
-    opcoes = ["➕ CRIAR NOVO"]
+# Limpeza e padronização das colunas
+df_v.columns = df_v.columns.str.strip().str.lower()
+df_v = df_v.loc[:, ~df_v.columns.duplicated()]
+
+# 3. ABAS DO PAINEL
+tab1, tab2 = st.tabs(["Registro Completo de Custos", "Gestão Corporativa de Usuários"])
+
+with tab1:
+    st.markdown('<div class="section-header">Inserir ou Alterar Registro Operacional</div>', unsafe_allow_html=True)
+
+    lista_opcoes = ["➕ CRIAR NOVO REGISTRO"]
     for i, row in df_v.iterrows():
-        # Tenta encontrar o nome do passageiro, se não houver, usa 'Sem Nome'
-        nome = row.get('passageiro', 'Sem Nome')
-        opcoes.append(f"{i} - {nome}")
-    
-    selecao = st.selectbox("Selecione para editar ou criar:", opcoes)
-    
-    # Lógica de Edição (Simplificada para evitar erros)
-    idx = None
-    if selecao != "➕ CRIAR NOVO":
-        idx = int(selecao.split(" - ")[0])
-    
-    with st.form("form_registo"):
-        # Campos básicos
-        in_pass = st.text_input("Passageiro", value=df_v.at[idx, 'passageiro'] if idx is not None else "")
-        in_mot = st.text_input("Motorista", value=df_v.at[idx, 'motorista'] if idx is not None else "")
-        
-        submitted = st.form_submit_button("Gravar Alterações")
-        
-        if submitted:
-            nova_linha = {"passageiro": in_pass, "motorista": in_mot}
-            
-            if idx is None:
-                # Adicionar linha
-                df_v = pd.concat([df_v, pd.DataFrame([nova_linha])], ignore_index=True)
-            else:
-                # Atualizar linha existente
-                for k, v in nova_linha.items():
-                    df_v.at[idx, k] = v
-            
-            # Salvar no GitHub
-            rp.update_file("dados_logistica.csv", "Update via Painel", df_v.to_csv(index=False), f_log.sha)
-            st.success("Dados gravados com sucesso!")
-            st.rerun()
-else:
-    st.warning("O ficheiro está vazio ou não pôde ser lido.")
-    if st.button("Criar novo ficheiro com estrutura base"):
-        df_base = pd.DataFrame(columns=['passageiro', 'motorista', 'data', 'trajeto', 'status'])
-        rp.create_file("dados_logistica.csv", "Inicialização", df_base.to_csv(index=False))
-        st.rerun()
+        pass_name = str(row.get('passageiro', 'Sem Nome'))
+        date_val = str(row.get('data', ''))
+        lista_opcoes.append(f"{i} - {pass_name} ({date_val})")
 
-st.dataframe(df_v)
+    registro_sel = st.selectbox("🔎 Selecione um registro para ALTERAR ou deixe na primeira opção para CRIAR NOVO:", options=lista_opcoes)
+
+    # Inicialização padrão das variáveis do formulário
+    idx_edit = None
+    def_pass = ""
+    def_cc = "Selecione..."
+    def_mot = ""
+    def_data = datetime.now().date()
+    def_traj = "Pontes e Lacerda x Cuiabá"
+    def_status = "Confirmado"
+    def_hora = ""
+    def_hosp = 0.0
+    def_trans = 0.0
+    def_aereo = 0.0
+    def_outros = 0.0
+
+    # Puxa os dados da linha se for uma alteração/edição
+    if registro_sel != "➕ CRIAR NOVO REGISTRO":
+        idx_edit = int(registro_sel.split(" - ")[0])
+        row_edit = df_v.loc[idx_edit]
+        
+        def_pass = str(row_edit.get('passageiro', ''))
+        def_mot = str(row_edit.get('motorista', ''))
+        
+        def_cc = str(row_edit.get('centro_custo', 'Selecione...')).strip()
+        if def_cc not in lista_centros_custo: 
+            def_cc = "Selecione..."
+        
+        try:
+            def_data = datetime.strptime(str(row_edit.get('data', '')).split(" ")[0], '%d/%m/%Y').date()
+        except:
+            try:
+                def_data = datetime.strptime(str(row_edit.get('data', '')).split(" ")[0], '%Y-%m-%d').date()
+            except:
+                def_data = datetime.now().date()
+                
+        t_val = str(row_edit.get('trajeto', 'Pontes e Lacerda x Cuiabá')).strip().lower()
+        if "cuiaba x pontes e lacerda" in t_val or "cuiabá x pontes e lacerda" in t_val: 
+            def_traj = "Cuiabá x Pontes e Lacerda"
+        elif "outros" in t_val: 
+            def_traj = "Outros Trajetos / Viagem Especial"
+        else: 
+            def_traj = "Pontes e Lacerda x Cuiabá"
+
+        def_status = str(row_edit.get('status', 'Confirmado')).strip()
+        if def_status not in ["Confirmado", "Cancelado", "Ocultado"]: 
+            def_status = "Confirmado"
+
+        def_hora = str(row_edit.get('horario', str(row_edit.get('hora_saida', ''))))
+        if def_hora == "nan" or def_hora == "None": 
+            def_hora = ""
+        
+        def safe_float(val):
+            try: return float(val)
+            except: return 0.0
+        
+        def_hosp = safe_float(row_edit.get('hotel_v', 0.0))
+        def_trans = safe_float(row_edit.get('comb_v', 0.0))
+        def_aereo = safe_float(row_edit.get('aereo_v', 0.0))
+        def_outros = safe_float(row_edit.get('outros_v', 0.0))
+
+    # Desenho do Formulário na Tela
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        in_pass = st.text_input("Nome do Passageiro", value=def_pass if def
