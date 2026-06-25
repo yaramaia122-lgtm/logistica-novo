@@ -85,7 +85,7 @@ if st.button("💾 Salvar Todas as Observações", width='stretch'):
 
 st.markdown("---")
 
-# 5. DADOS DE VIAGEM E MAQUIAGEM DE COLUNAS (INCLUINDO DESTINO E CHEGADA DO VOO)
+# 5. DADOS DE VIAGEM (Mapeamento com Cabeçalhos Duplos MultiIndex para espelhar a imagem)
 df_v.columns = df_v.columns.str.strip().str.lower()
 df_v.columns = df_v.columns.str.replace("á", "a").str.replace("í", "i").str.replace("º", "")
 df_v = df_v.loc[:, ~df_v.columns.duplicated()]
@@ -104,110 +104,4 @@ if p_filter:
 else:
     df_ex = df_sem
 
-# Dicionário robusto de conversão (pega várias formas de escrever a mesma coisa)
-n_col_mapeamento = {
-    "passageiro": "Passageiro", 
-    "data": "Data", 
-    "horario": "Horário", 
-    "hora_saida": "Horário",
-    "saida": "Saída", 
-    "destino": "Destino",
-    "motorista": "Motorista",
-    "cia/n voo": "Cia/Nº Voo",
-    "voo": "Cia/Nº Voo",
-    "horario do vuo": "Horário Voo",
-    "horario do voo": "Horário Voo",
-    "chegada do voo": "Chegada Voo",
-    "horario de chegada": "Chegada Voo",
-    "horario chegada voo": "Chegada Voo",
-    "data do vuo": "Data Voo",
-    "data do voo": "Data Voo"
-}
-
-# Renomeia todas as colunas possíveis para o nosso padrão limpo
-df_ex = df_ex.rename(columns=n_col_mapeamento)
-# Remove duplicatas caso ocorram conflitos na conversão
-df_ex = df_ex.loc[:, ~df_ex.columns.duplicated()]
-
-# Define exatamente o que vai aparecer em cada tabela
-cols_ida = ["Passageiro", "Data", "Horário", "Saída", "Destino", "Motorista", "Cia/Nº Voo", "Horário Voo", "Data Voo"]
-cols_volta = ["Passageiro", "Data", "Horário", "Saída", "Destino", "Motorista", "Cia/Nº Voo", "Chegada Voo", "Data Voo"]
-
-# Se a coluna não existir no CSV, cria ela vazia para não quebrar a tela
-for c in set(cols_ida + cols_volta):
-    if c not in df_ex.columns:
-        df_ex[c] = ""
-
-if 'trajeto' in df_ex.columns:
-    t_str = df_ex['trajeto'].str.strip().str.lower().str.replace("á", "a")
-else:
-    t_str = pd.Series([""] * len(df_ex), index=df_ex.index)
-
-# Monta os DataFrames finais já filtrados com as colunas perfeitas
-df_pl = df_ex[t_str == "pontes e lacerda x cuiaba"][cols_ida]
-df_cp = df_ex[t_str == "cuiaba x pontes e lacerda"][cols_volta]
-df_out = df_ex[(t_str != "pontes e lacerda x cuiaba") & (t_str != "cuiaba x pontes e lacerda")][cols_ida]
-
-# 6. GERADOR DE HTML CORPORATIVO ATUALIZADO
-dt_c = datetime.now(fuso).strftime('%d/%m/%Y às %H:%M')
-
-css_html = "<style>"
-css_html += "body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; padding: 20px; color: #000; }"
-css_html += "table { width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1px solid #777; }"
-css_html += "th, td { border: 1px solid #777; padding: 6px; text-align: center; vertical-align: middle; }"
-css_html += "thead th { background-color: #1b294b; color: #ffffff; font-weight: normal; font-size: 11px; }"
-css_html += ".titulo-bloco { background-color: #1b294b; color: white; padding: 10px; font-size: 14px; font-weight: bold; text-align: left; }"
-css_html += ".obs-header { background-color: #ef5350; color: white; padding: 8px; font-size: 14px; font-weight: bold; text-align: center; border: 1px solid #777; }"
-css_html += ".obs-dia { width: 15%; font-weight: bold; background-color: #f8f9fa; }"
-css_html += ".obs-texto { text-align: left; padding-left: 10px; line-height: 1.4; }"
-css_html += "</style>"
-
-html_doc = "<html><head><meta charset='utf-8'>" + css_html + "</head><body>"
-html_doc += "<div style='text-align: right; color: #555; font-size: 10px; margin-bottom: 10px;'>Emitido em: " + dt_c + "</div>"
-
-html_doc += "<div class='titulo-bloco'>Pontes e Lacerda x Cuiabá</div>"
-if not df_pl.empty:
-    html_doc += df_pl.to_html(index=False, justify='center', na_rep='-')
-else:
-    html_doc += "<table style='background:#f4f4f4;'><tr><td>Sem viagens confirmadas.</td></tr></table>"
-
-html_doc += "<div class='titulo-bloco' style='margin-top: 20px;'>Cuiabá x Pontes e Lacerda</div>"
-if not df_cp.empty:
-    html_doc += df_cp.to_html(index=False, justify='center', na_rep='-')
-else:
-    html_doc += "<table style='background:#f4f4f4;'><tr><td>Sem viagens confirmadas.</td></tr></table>"
-
-html_doc += "<div class='titulo-bloco' style='margin-top: 20px;'>Outros Trajetos e Viagens Especiais</div>"
-if not df_out.empty:
-    html_doc += df_out.to_html(index=False, justify='center', na_rep='-')
-else:
-    html_doc += "<table style='background:#f4f4f4;'><tr><td>Sem viagens especiais.</td></tr></table>"
-
-html_doc += "<table style='margin-top: 30px;'>"
-html_doc += "<tr><td colspan='2' class='obs-header'>Observações Semanais</td></tr>"
-
-for dia in dias_s:
-    idx = dias_s.index(dia)
-    data_formatada = datas_s[idx]
-    texto_puro = novas_observacoes[dia.lower()]
-    texto_html = texto_puro.replace("\n", "<br>")
-    
-    html_doc += "<tr>"
-    html_doc += "<td class='obs-dia'>" + dia + "<br>" + data_formatada + "</td>"
-    html_doc += "<td class='obs-texto'>" + texto_html + "</td>"
-    html_doc += "</tr>"
-html_doc += "</table>"
-
-html_doc += "</body></html>"
-
-st.download_button(label="📄 Baixar Relatório Corporativo AURA (HTML/PDF)", data=html_doc, file_name="agenda_AURA_semanal.html", mime="text/html", width='stretch')
-
-# 7. EXIBIÇÃO NO PAINEL
-st.markdown('<div class="treche-header">Trecho: Pontes e Lacerda x Cuiabá</div>', unsafe_allow_html=True)
-st.dataframe(df_pl, width='stretch', hide_index=True)
-
-st.markdown('<div class="treche-header">Trecho: Cuiabá x Pontes e Lacerda</div>', unsafe_allow_html=True)
-st.dataframe(df_cp, width='stretch', hide_index=True)
-
-st.markdown('<div class="treche-header">Outros Trajetos e Viagens Especiais</div>', unsafe_allow_html=True)
-st.dataframe(df_out, width='stretch', hide_index=True)
+# Função auxiliar
