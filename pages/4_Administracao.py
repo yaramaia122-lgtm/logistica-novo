@@ -1,9 +1,6 @@
 import streamlit as st
 import pandas as pd
 from github import Github, Auth
-import ioimport streamlit as st
-import pandas as pd
-from github import Github, Auth
 import io
 from datetime import datetime
 
@@ -44,7 +41,6 @@ tab1, tab2 = st.tabs(["Registro Completo de Custos", "Gestão Corporativa de Usu
 with tab1:
     st.markdown('<div class="section-header">Inserir ou Alterar Registro Operacional</div>', unsafe_allow_html=True)
 
-    # 🌟 A MÁGICA ACONTECE AQUI: SELETOR PARA SABER SE É NOVO OU EDIÇÃO
     lista_opcoes = ["➕ CRIAR NOVO REGISTRO"]
     for i, row in df_v.iterrows():
         pass_name = str(row.get('passageiro', 'Sem Nome'))
@@ -53,7 +49,6 @@ with tab1:
 
     registro_sel = st.selectbox("Selecione um registro para ALTERAR ou deixe na primeira opção para CRIAR NOVO:", options=lista_opcoes)
 
-    # Variáveis padrão (limpas)
     idx_edit = None
     def_pass = ""
     def_mot = ""
@@ -66,15 +61,13 @@ with tab1:
     def_aereo = 0.0
     def_outros = 0.0
 
-    # Se selecionou um registro existente, carrega os dados dele!
     if registro_sel != "➕ CRIAR NOVO REGISTRO":
-        idx_edit = int(registro_sel.split(" - ")[0]) # Pega o ID da linha selecionada
+        idx_edit = int(registro_sel.split(" - ")[0]) 
         row_edit = df_v.loc[idx_edit]
         
         def_pass = str(row_edit.get('passageiro', ''))
         def_mot = str(row_edit.get('motorista', ''))
         
-        # Tratamento seguro para resgatar a data
         try:
             def_data = datetime.strptime(str(row_edit.get('data', '')).split(" ")[0], '%d/%m/%Y').date()
         except:
@@ -85,123 +78,80 @@ with tab1:
                 
         t_val = str(row_edit.get('trajeto', 'Pontes e Lacerda x Cuiabá')).strip().lower()
         if t_val == "cuiaba x pontes e lacerda" or t_val == "cuiabá x pontes e lacerda": def_traj = "Cuiabá x Pontes e Lacerda"
-        elif "outros" in t_val: def_
-from datetime import datetime
+        elif "outros" in t_val: def_traj = "Outros Trajetos / Viagem Especial"
+        else: def_traj = "Pontes e Lacerda x Cuiabá"
 
-# 1. VERIFICAÇÃO DE LOGIN DE USUÁRIO
-if 'logado' not in st.session_state or not st.session_state['logado']:
-    st.session_state['logado'] = False
-    st.switch_page("main.py")
+        def_status = str(row_edit.get('status', 'Confirmado'))
+        if def_status not in ["Confirmado", "Cancelado", "Ocultado"]: def_status = "Confirmado"
 
-st.set_page_config(page_title="Administração - AURA LOGISTICS", layout="wide")
+        def_hora = str(row_edit.get('horario', str(row_edit.get('hora_saida', ''))))
+        if def_hora == "nan": def_hora = ""
+        
+        def safe_float(val):
+            try: return float(val)
+            except: return 0.0
+        
+        def_hosp = safe_float(row_edit.get('hotel_v', 0.0))
+        def_trans = safe_float(row_edit.get('comb_v', 0.0))
+        def_aereo = safe_float(row_edit.get('aereo_v', 0.0))
+        def_outros = safe_float(row_edit.get('outros_v', 0.0))
 
-# 🎨 ESTILIZAÇÃO CORPORATIVA E CORES OFICIAIS (SEM EMOJIS)
-st.markdown("""<style>
-    .stApp { background-color: #F8FAFC !important; }
-    .main-title { color: #002D5E !important; font-size: 24pt !important; font-weight: bold; margin-bottom: 5px; }
-    .subtitle { color: #64748B !important; font-size: 11pt !important; margin-bottom: 25px; }
-    .section-header { background-color: #002D5E !important; color: white !important; padding: 8px 15px; font-weight: bold; font-size: 12pt; border-radius: 4px; margin-top: 10px; margin-bottom: 15px; }
-    .subsection-header { color: #002D5E !important; font-weight: bold; font-size: 12pt; margin-top: 15px; margin-bottom: 10px; border-left: 4px solid #FF7F50; padding-left: 8px; }
-</style>""", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        in_pass = st.text_input("Nome do Passageiro", value=def_pass if def_pass != 'nan' else "")
+        in_traj = st.selectbox("Trajeto Selecionado", options=["Pontes e Lacerda x Cuiabá", "Cuiabá x Pontes e Lacerda", "Outros Trajetos / Viagem Especial"], index=["Pontes e Lacerda x Cuiabá", "Cuiabá x Pontes e Lacerda", "Outros Trajetos / Viagem Especial"].index(def_traj))
+    with col2:
+        in_mot = st.text_input("Motorista Designado", value=def_mot if def_mot != 'nan' else "")
+        in_status = st.selectbox("Status Operacional", options=["Confirmado", "Cancelado", "Ocultado"], index=["Confirmado", "Cancelado", "Ocultado"].index(def_status))
+    with col3:
+        in_data = st.date_input("Data da Viagem", value=def_data)
+        in_hora = st.text_input("Horário de Saída (HH:MM)", value=def_hora if def_hora != 'nan' else "")
 
-st.markdown('<div class="main-title">Painel Administrativo de Logística</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Gerenciamento centralizado de registros, trajetos, controle financeiro e credenciais de acesso</div>', unsafe_allow_html=True)
-
-# 2. CONEXÃO SEGURA COM O REPOSITÓRIO GITHUB
-tk, repo = st.secrets["GITHUB_TOKEN"], st.secrets["GITHUB_REPO"]
-rp = Github(auth=Auth.Token(tk)).get_repo(repo)
-
-# 3. CRIAÇÃO DAS GUIAS CORPORATIVAS
-aba_custos, aba_usuarios = st.tabs(["Registro Completo de Custos", "Gestão Corporativa de Usuários"])
-
-# =========================================================================
-# ABA 1: REGISTRO COMPLETO DE CUSTOS
-# =========================================================================
-with aba_custos:
-    f_file = rp.get_contents("dados_logistica.csv")
-    df_v = pd.read_csv(io.StringIO(f_file.decoded_content.decode()))
-
-    # Força a coluna data a ser interpretada estritamente como texto formatado para não sumir com as barras
-    if "data" in df_v.columns:
-        df_v["data"] = df_v["data"].astype(str).str.strip()
-
-    st.markdown('<div class="section-header">Inserir ou Alterar Registro Operacional</div>', unsafe_allow_html=True)
-
-    col_p, col_m, col_d = st.columns(3)
-    p_nome = col_p.text_input("Nome do Passageiro")
-    m_nome = col_m.selectbox("Motorista Designado", ["Ilson", "Particular", "Outro Profissional"])
-    d_viagem = col_d.date_input("Data da Viagem", datetime.now())
-
-    col_t, col_s, col_h = st.columns(3)
-    t_escolha = col_t.selectbox("Trajeto Selecionado", ["Pontes e Lacerda x Cuiabá", "Cuiabá x Pontes e Lacerda", "Outras Rotas"])
-    s_escolha = col_s.selectbox("Status Operacional", ["Confirmado", "Cancelado", "Ocultado"])
-    h_saida = col_h.text_input("Horário de Saída (HH:MM)")
-
-    st.markdown('<div class="subsection-header">Apropriação de Custos (R$)</div>', unsafe_allow_html=True)
+    st.markdown("**Apropriação de Custos (R$)**")
     c1, c2, c3, c4 = st.columns(4)
-    v_hotel = c1.text_input("Hospedagem", "0.00")
-    v_comb = c2.text_input("Transfer / Combustível", "0.00")
-    v_aereo = c3.text_input("Passagem Aérea", "0.00")
-    v_outros = c4.text_input("Outras Despesas", "0.00")
+    with c1: in_hosp = st.number_input("Hospedagem", value=float(def_hosp), step=10.0, format="%.2f")
+    with c2: in_trans = st.number_input("Transfer / Combustível", value=float(def_trans), step=10.0, format="%.2f")
+    with c3: in_aereo = st.number_input("Passagem Aérea", value=float(def_aereo), step=10.0, format="%.2f")
+    with c4: in_outros = st.number_input("Outras Despesas", value=float(def_outros), step=10.0, format="%.2f")
 
     if st.button("Gravar Alterações na Base de Dados", width='stretch'):
-        if not p_nome.strip():
-            st.error("Erro: O preenchimento do nome do passageiro é obrigatório para prosseguir.")
+        if not in_pass:
+            st.error("O nome do passageiro é obrigatório.")
         else:
-            try:
-                v_total = float(v_hotel) + float(v_comb) + float(v_aereo) + float(v_outros)
-                
-                novo_reg = {
-                    "passageiro": p_nome.strip(), "motorista": m_nome, "data": d_viagem.strftime('%d/%m/%Y'),
-                    "hora_saida": h_saida.strip(), "trajeto": t_escolha, "status": s_escolha,
-                    "centro_custo": "210301 - Moagem", "hotel_v": v_hotel, "comb_v": v_comb,
-                    "aereo_v": v_aereo, "outros_v": v_outros, "total": f"{v_total:.2f}", "voo": ""
-                }
-                
-                df_v = pd.concat([df_v, pd.DataFrame([novo_reg])], ignore_index=True)
-                rp.update_file("dados_logistica.csv", "Logistics Base Auto-Update via Admin", df_v.to_csv(index=False), f_file.sha)
-                st.success("Registro operacional persistido com sucesso na base de dados."); st.rerun()
-            except ValueError:
-                st.error("Erro: Certifique-se de que todos os valores informados nos campos de custos são numéricos.")
+            total_custo = in_hosp + in_trans + in_aereo + in_outros
+            t_save = in_traj.lower().replace("á", "a")
+            if "outros" in t_save: t_save = "outros trajetos / viagem especial"
 
-    st.markdown("---")
+            nova_linha = {
+                "passageiro": in_pass,
+                "motorista": in_mot,
+                "data": in_data.strftime('%d/%m/%Y'),
+                "trajeto": t_save,
+                "status": in_status,
+                "horario": in_hora,
+                "hora_saida": in_hora,
+                "hotel_v": in_hosp,
+                "comb_v": in_trans,
+                "aereo_v": in_aereo,
+                "outros_v": in_outros,
+                "total": total_custo
+            }
+
+            if idx_edit is None:
+                df_novo = pd.DataFrame([nova_linha])
+                df_v = pd.concat([df_v, df_novo], ignore_index=True)
+                msg_sucesso = "Novo registro criado com sucesso!"
+            else:
+                for k, v in nova_linha.items():
+                    df_v.at[idx_edit, k] = v
+                msg_sucesso = "Registro atualizado com sucesso!"
+
+            rp.update_file("dados_logistica.csv", "Admin Painel Update", df_v.to_csv(index=False), f_log.sha)
+            st.success(msg_sucesso)
+            st.rerun()
+
     st.markdown('<div class="section-header">Base de Dados Completa (Modo de Exibição e Auditoria)</div>', unsafe_allow_html=True)
-    cfg_tabela = {"data": st.column_config.TextColumn("Data", required=True)}
-    df_v_editado = st.data_editor(df_v, column_config=cfg_tabela, hide_index=True, width='stretch', key="editor_admin_v_final")
+    st.dataframe(df_v, use_container_width=True)
 
-    if st.button("Salvar Modificações Diretas da Tabela", width='content'):
-        rp.update_file("dados_logistica.csv", "Tabela Manual Update", df_v_editado.to_csv(index=False), rp.get_contents("dados_logistica.csv").sha)
-        st.success("Modificações salvas diretamente no arquivo base."); st.rerun()
-
-# =========================================================================
-# ABA 2: GESTÃO CORPORATIVA DE USUÁRIOS
-# =========================================================================
-with aba_usuarios:
-    st.markdown('<div class="section-header">Controle de Usuários e Permissões do Sistema</div>', unsafe_allow_html=True)
-    
-    f_user = rp.get_contents("usuarios.csv")
-    df_u = pd.read_csv(io.StringIO(f_user.decoded_content.decode()))
-    
-    col_u1, col_u2, col_u3 = st.columns(3)
-    novo_usuario = col_u1.text_input("Nome de Usuário (Login)")
-    nova_senha = col_u2.text_input("Senha de Acesso", type="password")
-    novo_perfil = col_u3.selectbox("Perfil de Acesso", ["admin", "usuario"])
-    
-    if st.button("Cadastrar Novo Usuário Corporativo", width='content'):
-        if not novo_usuario.strip() or not nova_senha.strip():
-            st.error("Erro: Usuário e Senha devem ser preenchidos obrigatoriamente.")
-        elif novo_usuario.strip() in df_u['usuario'].astype(str).values:
-            st.error("Erro: Este nome de usuário já está cadastrado no sistema.")
-        else:
-            novo_usr_df = pd.DataFrame([{"usuario": novo_usuario.strip(), "senha": nova_senha.strip(), "perfil": novo_perfil}])
-            df_u = pd.concat([df_u, novo_usr_df], ignore_index=True)
-            rp.update_file("usuarios.csv", "Add user via admin", df_u.to_csv(index=False), f_user.sha)
-            st.success(f"Usuário '{novo_usuario}' registrado com sucesso!"); st.rerun()
-            
-    st.markdown("---")
-    st.markdown('<div class="subsection-header">Usuários Ativos no Sistema</div>', unsafe_allow_html=True)
-    df_u_editado = st.data_editor(df_u, hide_index=True, width='stretch', key="editor_usuarios_v1")
-    
-    if st.button("Salvar Alterações na Lista de Usuários", width='content'):
-        rp.update_file("usuarios.csv", "Users Manual Update", df_u_editado.to_csv(index=False), rp.get_contents("usuarios.csv").sha)
-        st.success("Lista de credenciais atualizada."); st.rerun()
+with tab2:
+    st.info("Área de gestão de usuários em desenvolvimento.")
